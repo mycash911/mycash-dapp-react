@@ -19,7 +19,7 @@ const wagmiAdapter = new WagmiAdapter({
 const metadata = {
   name: 'MYCASH DApp',
   description: 'MYCASH rewards dApp on BSC',
-  url: 'https://yourusername.github.io/mycash-dapp-react',
+  url: 'https://github.com/mycash911/mycash-dapp-react',
   icons: ['https://mycash911.github.io/mycash/icon.png'],
 };
 
