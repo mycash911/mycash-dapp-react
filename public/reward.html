@@ -1038,17 +1038,23 @@
     }
 
     async function connectFlow(){
-      try{
-        setStatus("Connecting…");
+  try{
+    setStatus("Connecting…");
 
-        // THIS opens the Web3Modal list
-        await web3Modal.openModal();
+    // Force Web3Modal to open on the main "Connect Wallet" list,
+    // not whatever view (QR) it was on last time.
+    await web3Modal.openModal({
+      view: 'Connect'   // main wallet list
+    });
 
-        const account = getAccount(wagmiConfig);
-        if (!account || !account.address) {
-          setStatus("Connection cancelled");
-          return;
-        }
+    const account = getAccount(wagmiConfig);
+    if (!account || !account.address) {
+      setStatus("Connection cancelled");
+      return;
+    }
+
+    // ... rest of your connectFlow stays the same
+
 
         const provider = await getActiveEip1193Provider();
 
