@@ -573,10 +573,8 @@
   <!-- Web3Modal v2 HTML SDK (WalletConnect v3) -->
   <script type="module">
     /* ===== Web3Modal + Wagmi (HTML SDK) setup ===== */
-    // Web3Modal expects process.env.NODE_ENV
     window.process = { env: { NODE_ENV: "production" } };
 
-    // Avoid "w3m-box-button already defined" if another page also patches it
     if (window.customElements && !window.customElements._w3mPatched) {
       const origDefine = window.customElements.define.bind(window.customElements);
       window.customElements.define = (name, ctor, options) => {
@@ -601,8 +599,7 @@
     const { configureChains, createConfig, getAccount } = WagmiCore;
     const { bsc } = WagmiCoreChains;
 
-    // <<< USE YOUR REAL PROJECT ID HERE (this is the one you used before) >>>
-    const WALLETCONNECT_PROJECT_ID = "f89aac819fc8f8516ef9010d98d2fe7b";
+    const WALLETCONNECT_PROJECT_ID = "f89aac819fc8f8516ef9010d98d2fe7b"; // <- your projectId
 
     const chains = [bsc];
     const { publicClient } = configureChains(
@@ -621,12 +618,10 @@
       {
         projectId: WALLETCONNECT_PROJECT_ID,
         themeMode: "dark",
-        // optional tweaks – hide socials etc if you want later
       },
       ethereumClient
     );
 
-    // helper: get active EIP-1193 provider from Web3Modal/Wagmi
     async function getActiveEip1193Provider() {
       const account = getAccount(wagmiConfig);
       const connector = account?.connector;
@@ -637,12 +632,8 @@
       throw new Error("No provider from Web3Modal connection");
     }
 
-    /* ================================================================== */
-    /*                      YOUR ORIGINAL APP LOGIC                       */
-    /* ================================================================== */
-
+    /* ===================== ORIGINAL APP LOGIC ===================== */
     (function(){
-      // ===== CONFIG =====
       function formatToken(n) {
         n = Number(n);
         if (Number.isInteger(n)) return n.toString();
@@ -687,7 +678,6 @@
       let task2Eligible     = false;
       let task3Done         = false;
 
-      // ===== userId helpers =====
       function storageKeyFor(address){
         return "userId_" + address.toLowerCase();
       }
@@ -712,7 +702,6 @@
         return id;
       }
 
-      // ===== UI refs =====
       const connectBtn      = document.getElementById("connectBtn");
       const statusTextEl    = document.getElementById("statusText");
       const walletAddressEl = document.getElementById("walletAddress");
@@ -1053,12 +1042,10 @@
         };
       }
 
-      /* ========= NEW connectFlow USING WEB3MODAL POPUP ========= */
       async function connectFlow(){
         try{
           setStatus("Connecting…");
 
-          // Opens the Web3Modal UI (wallet list like your screenshot)
           await web3Modal.openModal();
 
           const account = getAccount(wagmiConfig);
@@ -1075,7 +1062,6 @@
 
           const address = account.address.toLowerCase();
 
-          // Chain check & switch (for wallets that support it)
           let chainId    = await web3Instance.eth.getChainId();
           let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
@@ -1095,7 +1081,6 @@
             }
           }
 
-          // Connected on correct chain
           setStatus("Connected");
 
           const session = await restoreSessionFromAddress(address);
@@ -1122,7 +1107,6 @@
       }
 
       async function tryAutoReconnectSilent(){
-        // Only try injected wallets (MetaMask / Trust extension) silently
         if(window.trustwallet && window.trustwallet.ethereum){
           const injected = window.trustwallet.ethereum;
           providerInstance = injected;
@@ -1186,7 +1170,6 @@
 
           setStatus("Claiming reward…");
 
-          // TODO: real contract call later
           setTimeout(()=>{
             setStatus("Reward claimed for " + currentAddress.slice(0,6) + "…" + currentAddress.slice(-4));
             alert("Reward claimed! (demo mode — add real contract call later)");
