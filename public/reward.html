@@ -614,13 +614,16 @@
     });
 
     const ethereumClient = new EthereumClient(wagmiConfig, chains);
-    const web3Modal = new Web3Modal(
-      {
-        projectId: WALLETCONNECT_PROJECT_ID,
-        themeMode: "dark",
-      },
-      ethereumClient
-    );
+ const web3Modal = new Web3Modal(
+  {
+    projectId: WALLETCONNECT_PROJECT_ID,
+    themeMode: "dark",
+
+    // ⬇⬇⬇ important: this turns OFF the Explorer/recommended wallets
+    enableExplorer: false
+  },
+  ethereumClient
+);
 
     async function getActiveEip1193Provider() {
       const account = getAccount(wagmiConfig);
