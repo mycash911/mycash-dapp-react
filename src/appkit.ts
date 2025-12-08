@@ -31,6 +31,9 @@ export const appKit = createAppKit({
   defaultNetwork: bsc,
   metadata,
 
+    hideBranding: true,
+
+
   // Put Trust + MetaMask at top
   featuredWalletIds: [
     // Trust Wallet
