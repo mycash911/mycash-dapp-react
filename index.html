@@ -1255,6 +1255,20 @@
         });
       }
 
+// Connect button inside reward card
+const connectBtnCard = document.getElementById("connectBtnCard");
+if (connectBtnCard) {
+  connectBtnCard.addEventListener("click", function () {
+    if (isWalletConnected) return;
+    connectFlow();
+  });
+}
+
+
+
+
+      
+
       if(claimBtn){
         claimBtn.addEventListener("click", claimReward);
       }
