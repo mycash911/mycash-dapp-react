@@ -487,16 +487,18 @@
             First time connection reward for eligible wallets.
           </div>
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
-          <button id="taskBtn" class="btn btn-task">View Tasks</button>
+          <button id="taskBtn" class="btn btn-task">View Tasks</button> 
+
+
+          
           <div class="small" id="claimHint" style="margin-top:4px;">
             Claim is locked until wallet is connected and all tasks are completed.
           </div>
         </div>
+        
 <button id="connectBtnCard" class="connect">Connect Wallet</button> 
         
-  <span id="connectedPill" class="connected-pill" style="display:none;">
-            Connected
-  </span>
+
       </div>
    </div>     
 
@@ -677,8 +679,8 @@
     const claimBtn        = document.getElementById("claimBtn");
     const claimHintEl     = document.getElementById("claimHint");
 
-    const connectHintCardEl = document.getElementById("connectHintCard");
-    const connectedPillEl   = document.getElementById("connectedPill");
+   const connectBtnCard  = document.getElementById("connectBtnCard");
+
 
     const rewardAmountEl  = document.getElementById("rewardAmountDisplay");
 
@@ -716,20 +718,23 @@
       setStatus("Not connected");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
-      if(connectHintCardEl){
-        connectHintCardEl.textContent = "Use the top button to connect your wallet.";
-      }
-      if(connectedPillEl){
-        connectedPillEl.style.display = "none";
-      }
 
-      if(tokensContainer){
-        tokensContainer.textContent = "Connect wallet to see USDT balance.";
-      }
+
+
+      
+
+     
       if(connectBtn){
         connectBtn.textContent = "Connect Wallet";
         connectBtn.classList.remove("connected");
       }
+
+if(connectBtnCard){
+  connectBtnCard.textContent = "Connect Wallet";
+  connectBtnCard.classList.remove("connected");
+}
+
+      
       updateClaimState();
     }
 
