@@ -31,26 +31,24 @@ export const appKit = createAppKit({
   defaultNetwork: bsc,
   metadata,
 
-
-
- // 🔹 Put Trust + MetaMask (and Coinbase) at top of wallet list
-  // IDs from Reown "Wallets List" docs
+  // Put Trust + MetaMask at top
   featuredWalletIds: [
     // Trust Wallet
     '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0',
     // MetaMask
     'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
-    
   ],
 
-
-
-
-
-  // ⭐ Disable Social Logins
+  // Disable Social Logins
   features: {
-    socials: [],        // remove Google / Discord / GitHub
-    email: false,       // remove Email login
-    analytics: false,   // optional
+    socials: [],
+    email: false,
+    analytics: false,
   },
 });
+
+// 🔹 Make it accessible to plain JS (your old functions)
+if (typeof window !== 'undefined') {
+  // @ts-expect-error
+  window.appKit = appKit;
+}
