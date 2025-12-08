@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from "react";
-import RewardsPage from "./pages/Rewards.jsx"; // 👈 make sure this path & file name are correct
+import RewardsPage from "main.jsx"; // 👈 make sure this path & file name are correct
 
 const App = () => {
   return (
