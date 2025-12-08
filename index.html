@@ -994,18 +994,17 @@ if(connectBtnCard){
           '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
       }
 
-      isWalletConnected = true;
-      if(connectBtn){
-        connectBtn.textContent = "Connected";
-        connectBtn.classList.add("connected");
-        if(connectHintCardEl){
-          connectHintCardEl.textContent = "Wallet connected.";
-        }
-        if(connectedPillEl){
-          connectedPillEl.style.display = "inline-flex";
-        }
-      }
+   isWalletConnected = true;
 
+if (connectBtn) {
+  connectBtn.textContent = "Connected";
+  connectBtn.classList.add("connected");
+}
+
+if (connectBtnCard) {
+  connectBtnCard.textContent = "Connected";
+  connectBtnCard.classList.add("connected");
+}
       updateClaimState();
 
       // Return values for connectFlow
