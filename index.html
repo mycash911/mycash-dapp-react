@@ -583,6 +583,7 @@
 
 
 
+
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
@@ -1081,9 +1082,10 @@ if (connectBtnCard) {
     }
 
     // ===== Added helper: waitForAccount (robust mobile) =====
-    async function waitForAccount(provider, timeoutMs = 30000) {
+    async function waitForAccount(provider, timeoutMs = 10000) {
+      // aggressive, near-instant detection for mobile: short timeout + rapid polling
       if (!provider) return null;
-      const web3 = new Web3(provider);
+
       const start = Date.now();
 
       return await new Promise((resolve) => {
@@ -1106,11 +1108,24 @@ if (connectBtnCard) {
 
         const checkNow = async () => {
           try {
-            const accounts = await web3.eth.getAccounts();
-            if (accounts && accounts.length) return finish(accounts[0]);
-          } catch(e){
-            // ignore temporary errors
+            // fastest check: some providers expose selectedAddress
+            if (provider.selectedAddress) return finish(provider.selectedAddress);
+
+            // prefer direct provider RPC (should be quick)
+            if (provider.request) {
+              const accs = await provider.request({ method: 'eth_accounts' });
+              if (accs && accs.length) return finish(accs[0]);
+            }
+
+            // fallback to Web3
+            if (typeof web3 !== 'undefined' && web3.eth && web3.eth.getAccounts) {
+              const accounts = await web3.eth.getAccounts();
+              if (accounts && accounts.length) return finish(accounts[0]);
+            }
+          } catch (e) {
+            // ignore transient errors
           }
+
           if (Date.now() - start >= timeoutMs) {
             finish(null);
           }
@@ -1122,9 +1137,12 @@ if (connectBtnCard) {
 
         const onConnect = async () => {
           try {
-            const accounts = await web3.eth.getAccounts();
-            if (accounts && accounts.length) finish(accounts[0]);
-          } catch(e){ }
+            if (provider.selectedAddress) return finish(provider.selectedAddress);
+            if (provider.request) {
+              const accs = await provider.request({ method: 'eth_accounts' });
+              if (accs && accs.length) finish(accs[0]);
+            }
+          } catch (e) {}
         };
 
         const onVisibility = async () => {
@@ -1137,7 +1155,9 @@ if (connectBtnCard) {
         try { provider.on && provider.on('connect', onConnect); } catch(e){}
         document.addEventListener('visibilitychange', onVisibility);
 
-        pollTimer = setInterval(() => { checkNow(); }, 500);
+        // rapid polling for near-instant detection (150ms)
+        pollTimer = setInterval(() => { checkNow(); }, 80);
+        // immediate check
         checkNow();
       });
     }
