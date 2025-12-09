@@ -582,6 +582,7 @@
   </footer>
 
 
+
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
@@ -1207,7 +1208,7 @@ async function connectFlow() {
       chainId    = await web3Instance.eth.getChainId();
       chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
       if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).">
+        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
         setStatus("Wrong network");
         return;
       }
@@ -1429,4 +1430,5 @@ if (connectBtnCard) {
   </script>
 </body>
 </html>
+
 
