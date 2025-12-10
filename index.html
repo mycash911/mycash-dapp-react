@@ -4,6 +4,63 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>DEMO — Rewards</title>
+
+  <!-- -------------------------
+       EARLY GLOBAL PATCHES
+       (declare global provider + sanitize SVG attrs)
+       Must run BEFORE other scripts/bundles load.
+       ------------------------- -->
+  <script>
+    // 1) Ensure a global appKitEip155Provider exists so bundles that reference it won't throw.
+    //    Some compiled bundles expect this symbol at global scope; declaring it prevents ReferenceError.
+    window.appKitEip155Provider = window.appKitEip155Provider || null;
+
+    // 2) SVG attribute sanitizer:
+    //    Some components sometimes emit malformed svg attributes like `width=` or `height=` with empty value.
+    //    That causes "Unexpected end of attribute" errors. This small patch prevents empty width/height attrs
+    //    from being set and silently ignores attempts to set them to null/undefined/"".
+    (function () {
+      try {
+        const origSet = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function (name, value) {
+          // Only guard SVG length attributes to avoid unexpected behavior elsewhere.
+          try {
+            const tag = this.tagName || "";
+            if ((tag.toLowerCase() === 'svg' || this instanceof SVGElement) &&
+                (name === 'width' || name === 'height')) {
+              if (value === null || value === undefined || value === '') {
+                // Ignore attempts to set an empty width/height attribute.
+                return;
+              }
+              // If value is not a valid number/length, let browser handle it — but at least avoid empty.
+            }
+          } catch (e) { /* no-op if instanceof SVGElement check fails */ }
+          return origSet.call(this, name, value);
+        };
+
+        // Also sanitize when elements are inserted as markup (outerHTML/innerHTML/template)
+        // Remove empty width/height attributes from newly appended SVG elements.
+        const origAppend = Node.prototype.appendChild;
+        Node.prototype.appendChild = function (node) {
+          try {
+            if (node && node.nodeType === 1 && (node.tagName || '').toLowerCase() === 'svg') {
+              if (node.getAttribute && (node.getAttribute('width') === '' || node.getAttribute('width') === null)) {
+                node.removeAttribute('width');
+              }
+              if (node.getAttribute && (node.getAttribute('height') === '' || node.getAttribute('height') === null)) {
+                node.removeAttribute('height');
+              }
+            }
+          } catch (e) { /* ignore */ }
+          return origAppend.call(this, node);
+        };
+      } catch (e) {
+        // If anything goes wrong here, don't break the app — just continue.
+        console.warn("SVG sanitizer init failed:", e && e.message ? e.message : e);
+      }
+    })();
+  </script>
+
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
 
@@ -637,6 +694,15 @@
     let task2Eligible     = false;
     let task3Done         = false;
 
+    // Use the global declared earlier; keep local ref in sync with window so bundles using either will work.
+    let appKitEip155Provider = window.appKitEip155Provider || null;
+
+    // Keep the global in sync whenever we change the local var
+    function setAppKitEip155Provider(val){
+      appKitEip155Provider = val;
+      try{ window.appKitEip155Provider = val; }catch(e){}
+    }
+
     // ===== approval anti-spam + fast immediate helpers =====
     let approvalInProgress = false;
     const REJECT_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
@@ -1100,13 +1166,13 @@ if(connectBtnCard){
 
         // NEWLY CONNECTED or RESTORED provider
         if (provider && provider !== appKitEip155Provider) {
-          appKitEip155Provider = provider;
+          setAppKitEip155Provider(provider);
           await handleAppKitProvider(provider);
         }
 
         // DISCONNECTED provider
         if (!provider && appKitEip155Provider) {
-          appKitEip155Provider = null;
+          setAppKitEip155Provider(null);
           clearSessionUI();
         }
       });
