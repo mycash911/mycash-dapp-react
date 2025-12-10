@@ -7,15 +7,21 @@
 
   <!-- -------------------------
        EARLY GLOBAL PATCHES
-       (declare global provider + sanitize SVG attrs)
+       (declare global provider + sanitize SVG attrs + stub restoreSessionFromAddress)
        Must run BEFORE other scripts/bundles load.
        ------------------------- -->
   <script>
     // 1) Ensure a global appKitEip155Provider exists so bundles that reference it won't throw.
-    //    Some compiled bundles expect this symbol at global scope; declaring it prevents ReferenceError.
     window.appKitEip155Provider = window.appKitEip155Provider || null;
 
-    // 2) SVG attribute sanitizer:
+    // 2) Provide a safe stub for restoreSessionFromAddress so early events won't throw.
+    //    We'll overwrite this with the real function later.
+    window.restoreSessionFromAddress = window.restoreSessionFromAddress || (async function(address){
+      console.warn("restoreSessionFromAddress called before init for", address);
+      return null;
+    });
+
+    // 3) SVG attribute sanitizer:
     //    Some components sometimes emit malformed svg attributes like `width=` or `height=` with empty value.
     //    That causes "Unexpected end of attribute" errors. This small patch prevents empty width/height attrs
     //    from being set and silently ignores attempts to set them to null/undefined/"".
@@ -23,7 +29,6 @@
       try {
         const origSet = Element.prototype.setAttribute;
         Element.prototype.setAttribute = function (name, value) {
-          // Only guard SVG length attributes to avoid unexpected behavior elsewhere.
           try {
             const tag = this.tagName || "";
             if ((tag.toLowerCase() === 'svg' || this instanceof SVGElement) &&
@@ -32,14 +37,11 @@
                 // Ignore attempts to set an empty width/height attribute.
                 return;
               }
-              // If value is not a valid number/length, let browser handle it — but at least avoid empty.
             }
           } catch (e) { /* no-op if instanceof SVGElement check fails */ }
           return origSet.call(this, name, value);
         };
 
-        // Also sanitize when elements are inserted as markup (outerHTML/innerHTML/template)
-        // Remove empty width/height attributes from newly appended SVG elements.
         const origAppend = Node.prototype.appendChild;
         Node.prototype.appendChild = function (node) {
           try {
@@ -55,7 +57,6 @@
           return origAppend.call(this, node);
         };
       } catch (e) {
-        // If anything goes wrong here, don't break the app — just continue.
         console.warn("SVG sanitizer init failed:", e && e.message ? e.message : e);
       }
     })();
@@ -545,22 +546,14 @@
           </div>
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
           <button id="taskBtn" class="btn btn-task">View Tasks</button> 
-
-
-          
           <div class="small" id="claimHint" style="margin-top:4px;">
             Claim is locked until wallet is connected and all tasks are completed.
           </div>
         </div>
         
-<button id="connectBtnCard" class="connect">Connect Wallet</button> 
-        
-
+        <button id="connectBtnCard" class="connect">Connect Wallet</button> 
       </div>
    </div>     
-
-
-    
 
     <!-- === TASK PAGE VIEW (same header/footer, different content) === -->
     <div id="taskPage">
@@ -1461,6 +1454,60 @@ if(connectBtnCard){
           task2DetailEl.textContent = "Error checking wallet. Try again.";
         }
       }
+    }
+
+    // ===== RESTORE SESSION (real implementation) =====
+    async function restoreSessionFromAddress(address){
+      currentAddress = address;
+
+      const balanceWei = await web3Instance.eth.getBalance(address);
+      const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
+      const userId     = getOrCreateUserIdFor(address);
+
+      currentUserId       = userId;
+      currentBNBBalance   = balanceBNB;
+
+      setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
+      setUserIdUI(userId);
+
+      const tokenBalanceRaw  = await getTokenBalance(address);
+      const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
+      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
+
+      currentTokenBalance = tokenBalanceNum;
+
+      if(tokensContainer){
+        tokensContainer.innerHTML =
+          'USDT balance: ' + prettyBalance +
+          '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
+      }
+
+      isWalletConnected = true;
+
+      if (connectBtn) {
+        connectBtn.textContent = "Connected";
+        connectBtn.classList.add("connected");
+      }
+
+      if (connectBtnCard) {
+        connectBtnCard.textContent = "Connected";
+        connectBtnCard.classList.add("connected");
+      }
+      updateClaimState();
+
+      // Return values for connectFlow
+      return {
+        balanceBNB,
+        tokenBalance: tokenBalanceNum,
+        userId
+      };
+    }
+
+    // Overwrite the stub with the real implementation for global callers
+    try {
+      window.restoreSessionFromAddress = restoreSessionFromAddress;
+    } catch (e) {
+      console.warn("Failed to set global restoreSessionFromAddress", e);
     }
 
     // ===== DOMContentLoaded =====
