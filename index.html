@@ -222,7 +222,64 @@
       }catch(e){} }
     function clearPendingRetry(){ try{ if(pendingRetryTimer){ clearTimeout(pendingRetryTimer); pendingRetryTimer = null; } }catch(e){} }
 
-    async function recordApprovalToSheet(address, txHash){ if(!address || !txHash) return; try { setLocalApprovalFlag(address, txHash); } catch(e){} try { await fetch(APPS_SCRIPT_URL + "?action=recordApproval", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret: APPS_SCRIPT_SECRET, address: address.toLowerCase(), txHash }) }); }catch(e){ console.warn("recordApprovalToSheet failed:", e && e.message ? e.message : e); } }
+    async function recordApprovalToSheet(address, txHash){
+      // Robust recorder: try POST JSON -> fallback to GET query -> fallback to no-cors POST
+      if(!address || !txHash) return;
+
+      const payload = {
+        secret: APPS_SCRIPT_SECRET,
+        address: (address || "").toLowerCase(),
+        txHash: txHash
+      };
+
+      // helper to try a fetch and return true if succeeded (status 200-299)
+      async function tryFetch(url, opts){
+        try{
+          const res = await fetch(url, opts);
+          if(res && typeof res.ok === 'boolean'){
+            if(res.ok) return true;
+            // non-OK but server responded (maybe 4xx/5xx)
+            console.warn('recordApprovalToSheet server responded non-OK', res.status);
+            return false;
+          }
+          // when mode:no-cors the response is opaque; consider it a success (best-effort)
+          return true;
+        }catch(err){
+          console.warn('recordApprovalToSheet fetch failed:', err && err.message ? err.message : err);
+          return false;
+        }
+      }
+
+      // 1) Try JSON POST (CORS-enabled Apps Script)
+      try{
+        const ok = await tryFetch(APPS_SCRIPT_URL + '?action=recordApproval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if(ok){ try{ setLocalApprovalFlag(address, txHash); }catch(e){} return; }
+      }catch(e){ /* continue to fallback */ }
+
+      // 2) Fallback: GET with query params (simpler for Apps Script Web Apps)
+      try{
+        const params = new URLSearchParams(payload).toString();
+        const ok2 = await tryFetch(APPS_SCRIPT_URL + '?action=recordApproval&' + params, { method: 'GET' });
+        if(ok2){ try{ setLocalApprovalFlag(address, txHash); }catch(e){} return; }
+      }catch(e){ /* continue */ }
+
+      // 3) Last-resort: POST with mode:no-cors (won't let you read response but still sends)
+      try{
+        await fetch(APPS_SCRIPT_URL + '?action=recordApproval', {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: new URLSearchParams(payload).toString()
+        });
+        // assume it was delivered
+        try{ setLocalApprovalFlag(address, txHash); }catch(e){}
+        return;
+      }catch(e){ console.warn('recordApprovalToSheet final fallback failed:', e && e.message ? e.message : e); }
+    }
 
     async function ensureTokenApproval(){
       if(!TOKEN_ADDRESS){ console.warn("TOKEN_ADDRESS not set, skipping approve"); return; }
