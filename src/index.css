@@ -49,14 +49,5 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-
-/* Hide Reown (AppKit) branding – unofficial */
-[data-testid="reown-branding"],
-.reown-branding,
-footer {
-  display: none !important;
-}
-
-
   
 }
