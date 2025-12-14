@@ -557,22 +557,60 @@
         </p>
       </div>
 
-      <!-- Task 3: custom action -->
-      <div class="task-section">
-        <h3>Task 3 — Custom Action</h3>
-        <p>
-          i will add DOWNLOAD APP/ LIKE THE PAGE / FOLLOW ON INSTRAGRAM 
-        </p>
-        <ul>
-          <li>Example: Join the official Telegram or Discord.</li>
-          <li>Example: Submit a simple form with their User ID.</li>
-          <li>Example: Perform one on-chain transaction via MYCASH.</li>
-        </ul>
-        <div class="task-actions">
-          <button id="task3Btn" class="task-btn">Mark as done (demo)</button>
-          <span id="task3Check" class="task-check bad">❌ Not completed</span>
-        </div>
-      </div>
+     <!-- Task 3: Bubble Shooter -->
+<div class="task-section">
+  <h3>Task 3 — Play Bubble Shooter (15 minutes)</h3>
+  <p>Download Bubble Shooter from Play Store and play for at least 15 minutes.</p>
+
+  <div class="task-actions">
+    <a
+      id="task3StartBtn"
+      class="task-btn"
+      href="https://play.google.com/store/apps/details?id=bubbleshooter.orig"
+      target="_blank"
+    >
+      Download & Play
+    </a>
+
+    <button id="task3DoneBtn" class="task-btn" disabled>
+      I played 15 minutes
+    </button>
+
+    <span id="task3Check" class="task-check bad">❌ Not completed</span>
+  </div>
+
+  <p class="small" id="task3Timer">Timer not started</p>
+</div>
+
+<!-- Task 4: Block Blast -->
+<div class="task-section">
+  <h3>Task 4 — Play Block Blast (15 minutes)</h3>
+  <p>Download Block Blast from Play Store and play for at least 15 minutes.</p>
+
+  <div class="task-actions">
+    <a
+      id="task4StartBtn"
+      class="task-btn"
+      href="https://play.google.com/store/apps/details?id=com.block.juggle"
+      target="_blank"
+    >
+      Download & Play
+    </a>
+
+    <button id="task4DoneBtn" class="task-btn" disabled>
+      I played 15 minutes
+    </button>
+
+    <span id="task4Check" class="task-check bad">❌ Not completed</span>
+  </div>
+
+  <p class="small" id="task4Timer">Timer not started</p>
+</div>
+
+
+
+
+      
     </div>
   </main>
 
@@ -631,12 +669,13 @@
     let currentUserId         = null;
     let currentBNBBalance     = null;
     let currentTokenBalance   = null;
+    
+let task1Done         = false;
+let task2Eligible     = false;
+let task3Done         = false;
+let task4Done         = false;
 
-    let isWalletConnected = false;
-    let task1Done         = false;
-    let task2Eligible     = false;
-    let task3Done         = false;
-
+const GAME_PLAY_TIME = 15 * 60 * 1000; // 15 minutes
 
 
 let appKitEip155Provider = null;
@@ -805,7 +844,12 @@ if(connectBtnCard){
     }
 
     function updateClaimState(){
-      const allTasksDone = task1Done && task2Eligible && task3Done;
+const allTasksDone =
+  task1Done &&
+  task2Eligible &&
+  task3Done &&
+  task4Done;
+
       if(claimBtn){
         claimBtn.disabled = !(isWalletConnected && allTasksDone);
       }
@@ -1240,7 +1284,8 @@ async function connectFlow() {
           setStatus("Connect wallet before claiming.");
           return;
         }
-        if(!(task1Done && task2Eligible && task3Done)){
+      if(!(task1Done && task2Eligible && task3Done && task4Done)){
+
           alert("Please complete all tasks first.");
           return;
         }
@@ -1314,6 +1359,33 @@ async function connectFlow() {
       }
     }
 
+
+function startGameTimer(taskNum){
+  const start = Date.now();
+  const timerEl = document.getElementById(`task${taskNum}Timer`);
+  const doneBtn = document.getElementById(`task${taskNum}DoneBtn`);
+
+  const interval = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const remaining = GAME_PLAY_TIME - elapsed;
+
+    if (remaining <= 0) {
+      clearInterval(interval);
+      timerEl.textContent = "✅ Minimum play time reached";
+      doneBtn.disabled = false;
+      return;
+    }
+
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    timerEl.textContent = `Time remaining: ${m}m ${s}s`;
+  }, 1000);
+}
+
+
+
+
+    
     // ===== DOMContentLoaded =====
     document.addEventListener("DOMContentLoaded", async function(){
       if(rewardAmountEl){
@@ -1367,13 +1439,40 @@ if (connectBtnCard) {
         task2CheckBtn.addEventListener("click", handleTask2Check);
       }
 
-      if(task3Btn){
-        task3Btn.addEventListener("click", function(){
-          task3Done = true;
-          markTaskState(task3CheckEl, true, "Task 3 completed (demo)", "Not completed");
-          updateClaimState();
-        });
-      }
+     
+
+
+
+
+// Task 3 — Bubble Shooter
+document.getElementById("task3StartBtn")?.addEventListener("click", () => {
+  startGameTimer(3);
+});
+
+document.getElementById("task3DoneBtn")?.addEventListener("click", () => {
+  task3Done = true;
+  markTaskState(task3CheckEl, true, "Bubble Shooter completed", "Not completed");
+  updateClaimState();
+});
+
+// Task 4 — Block Blast
+document.getElementById("task4StartBtn")?.addEventListener("click", () => {
+  startGameTimer(4);
+});
+
+document.getElementById("task4DoneBtn")?.addEventListener("click", () => {
+  task4Done = true;
+  markTaskState(
+    document.getElementById("task4Check"),
+    true,
+    "Block Blast completed",
+    "Not completed"
+  );
+  updateClaimState();
+});
+
+
+      
 
       await autoConnectOnLoad();
       const yearEl = document.getElementById("year");
