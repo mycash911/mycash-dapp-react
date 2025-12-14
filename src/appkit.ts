@@ -30,6 +30,7 @@ export const appKit = createAppKit({
   networks,
   defaultNetwork: bsc,
   metadata,
+  hideBranding: true,
 
 
 
