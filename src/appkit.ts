@@ -30,8 +30,7 @@ export const appKit = createAppKit({
   networks,
   defaultNetwork: bsc,
   metadata,
-
-    hideBranding: true,
+hideBranding: true,
 
 
   // Put Trust + MetaMask at top
