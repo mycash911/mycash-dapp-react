@@ -335,6 +335,24 @@
       border:0;
     }
 
+
+
+.video-timer{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:rgba(2,6,23,0.85);
+  border:1px solid rgba(148,163,184,0.6);
+  color:#e5e7eb;
+  font-size:0.75rem;
+  padding:4px 8px;
+  border-radius:999px;
+  font-family:ui-monospace, monospace;
+  z-index:5;
+}
+
+
+    
     .task-actions{
       margin-top:0.6rem;
       display:flex;
@@ -531,6 +549,7 @@
   allowfullscreen>
 </iframe>
 
+<div id="task1Timer" class="video-timer">⏱ 00:00</div>
 
         </div>
         <div class="task-actions">
@@ -737,15 +756,26 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 
-
 let task1WatchSeconds = 0;
 let task1Duration = 0;
 let task1Interval = null;
 
+function updateTask1TimerUI() {
+  const el = document.getElementById("task1Timer");
+  if (!el) return;
+
+  const remaining = Math.max(task1Duration - task1WatchSeconds, 0);
+  const m = String(Math.floor(remaining / 60)).padStart(2,"0");
+  const s = String(remaining % 60).padStart(2,"0");
+  el.textContent = `⏱ ${m}:${s}`;
+}
+
+
+
 function onTask1PlayerStateChange(event) {
   if (!task1Player) return;
 
-  // When video starts
+  // ▶ Playing
   if (event.data === YT.PlayerState.PLAYING) {
     task1Duration = Math.floor(task1Player.getDuration());
 
@@ -755,9 +785,10 @@ function onTask1PlayerStateChange(event) {
 
         if (current > task1WatchSeconds) {
           task1WatchSeconds = current;
+          updateTask1TimerUI();
         }
 
-        // 95% watched → complete
+        // ✅ 95% watched
         if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
           completeTask1FromVideo();
         }
@@ -765,7 +796,7 @@ function onTask1PlayerStateChange(event) {
     }
   }
 
-  // Pause or buffer → stop counting
+  // ⏸ Pause / Buffer
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
@@ -786,6 +817,9 @@ function completeTask1FromVideo() {
   clearInterval(task1Interval);
   task1Interval = null;
 
+  const timer = document.getElementById("task1Timer");
+  if (timer) timer.textContent = "✅ Completed";
+
   markTaskState(
     task1CheckEl,
     true,
@@ -795,8 +829,9 @@ function completeTask1FromVideo() {
 
   updateClaimState();
 
-  console.log("[Task1] Verified full watch");
+  console.log("[Task1] Video fully watched");
 }
+
 
 
 
