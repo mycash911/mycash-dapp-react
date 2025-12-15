@@ -1,4 +1,4 @@
-ring time <!doctype html>
+<!doctype html>
 <html> 
 <head>
   <meta charset="utf-8"/>
@@ -830,12 +830,12 @@ function updateTask1TimerUI() {
   const ringEl = document.getElementById("task1Ring");
   if (!textEl || !ringEl) return;
 
-  // ⏱️ COUNT UP — always works
-  const m = String(Math.floor(task1WatchSeconds / 60)).padStart(2,"0");
-  const s = String(task1WatchSeconds % 60).padStart(2,"0");
+// ⏱️ Count UP (never lies during ads)
+  const m = String(Math.floor(task1WatchSeconds / 60)).padStart(2, "0");
+  const s = String(task1WatchSeconds % 60).padStart(2, "0");
   textEl.textContent = `${m}:${s}`;
 
-  // 🔵 Ring only animates when duration is known
+    // 🔵 Progress ring only when duration known
   if (task1Duration > 0) {
     const progress = Math.min(task1WatchSeconds / task1Duration, 1);
     const circumference = 113;
@@ -843,7 +843,6 @@ function updateTask1TimerUI() {
       circumference - progress * circumference;
   }
 }
-
 
   
 
@@ -860,33 +859,45 @@ function updateTask1TimerUI() {
 
 
 
+let lastTime = 0;
 
 function onTask1PlayerStateChange(event) {
   if (!task1Player) return;
 
-  // ▶ Playing
+  // ▶ PLAYING (video OR ad)
   if (event.data === YT.PlayerState.PLAYING) {
-const d = Math.floor(task1Player.getDuration());
-if (d > 0) task1Duration = d;
 
     if (!task1Interval) {
       task1Interval = setInterval(() => {
         const current = Math.floor(task1Player.getCurrentTime());
+        const duration = Math.floor(task1Player.getDuration());
 
-        if (current > task1WatchSeconds) {
-          task1WatchSeconds = current;
-          updateTask1TimerUI();
+        // ❌ Ads or buffering → time not moving
+        if (current <= lastTime) return;
+
+        // ✅ REAL video is playing
+        lastTime = current;
+        task1WatchSeconds = current;
+
+        if (duration > 0) {
+          task1Duration = duration;
         }
 
-        // ✅ 95% watched
-        if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
+        updateTask1TimerUI();
+
+        // ✅ Completion check (95%)
+        if (
+          task1Duration > 0 &&
+          task1WatchSeconds >= task1Duration * 0.95
+        ) {
           completeTask1FromVideo();
         }
+
       }, 1000);
     }
   }
 
-  // ⏸ Pause / Buffer
+  // ⏸ Pause, buffer, ad switch
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
