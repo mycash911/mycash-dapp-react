@@ -836,6 +836,40 @@ function updateTask1TimerUI() {
     circumference - progress * circumference;
 }
 
+function waitForRealTask1Video() {
+  const checker = setInterval(() => {
+    if (!task1Player) return;
+
+    const d = Math.floor(task1Player.getDuration());
+
+    // ✅ Real video detected (ads finished)
+    if (d > 0) {
+      clearInterval(checker);
+      task1Duration = d;
+      startTask1Timer();
+    }
+  }, 500);
+}
+
+
+
+    function startTask1Timer() {
+  if (task1Interval) return;
+
+  task1Interval = setInterval(() => {
+    const current = Math.floor(task1Player.getCurrentTime());
+
+    if (current > task1WatchSeconds) {
+      task1WatchSeconds = current;
+      updateTask1TimerUI();
+    }
+
+    // ✅ 95% watched
+    if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
+      completeTask1FromVideo();
+    }
+  }, 1000);
+}
 
 
 
@@ -844,23 +878,29 @@ function onTask1PlayerStateChange(event) {
 
   // ▶ Playing
   if (event.data === YT.PlayerState.PLAYING) {
-    task1Duration = Math.floor(task1Player.getDuration());
+function onTask1PlayerStateChange(event) {
+  if (!task1Player) return;
 
-    if (!task1Interval) {
-      task1Interval = setInterval(() => {
-        const current = Math.floor(task1Player.getCurrentTime());
-
-        if (current > task1WatchSeconds) {
-          task1WatchSeconds = current;
-          updateTask1TimerUI();
-        }
-
-        // ✅ 95% watched
-        if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
-          completeTask1FromVideo();
-        }
-      }, 1000);
+  // ▶ Something is playing (ad OR real video)
+  if (event.data === YT.PlayerState.PLAYING) {
+    // 🔥 If duration is 0, ad is still playing
+    if (!task1Duration || task1Duration === 0) {
+      waitForRealTask1Video();
+    } else {
+      startTask1Timer();
     }
+  }
+
+  // ⏸ Pause / buffering
+  if (
+    event.data === YT.PlayerState.PAUSED ||
+    event.data === YT.PlayerState.BUFFERING
+  ) {
+    clearInterval(task1Interval);
+    task1Interval = null;
+  }
+}
+
   }
 
   // ⏸ Pause / Buffer
@@ -1566,9 +1606,9 @@ function onTask1PlayerReady() {
 
   // Reset counters
   task1WatchSeconds = 0;
-  task1Duration = Math.floor(task1Player.getDuration());
-
-  updateTask1TimerUI();
+task1WatchSeconds = 0;
+task1Duration = 0; // ⬅ reset for ads
+updateTask1TimerUI();
 
   // 🔥 REQUIRED: start playback
   task1Player.playVideo();
