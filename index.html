@@ -1,3 +1,7 @@
+yt task 1 
+
+
+
 <!doctype html>
 <html> 
 <head>
@@ -335,25 +339,6 @@
       border:0;
     }
 
-.video-start-btn{
-  position:absolute;
-  inset:0;
-  background:rgba(2,6,23,0.75);
-  color:#e5e7eb;
-  border:none;
-  font-size:1rem;
-  font-weight:600;
-  cursor:pointer;
-  z-index:6;
-}
-
-.video-start-btn:hover{
-  background:rgba(2,6,23,0.85);
-}
-
-
-
-    
     .task-actions{
       margin-top:0.6rem;
       display:flex;
@@ -540,29 +525,21 @@
         <p>
           Watch this video to understand how MYCASH and the reward system works.
         </p>
-
-
-        
-<div class="video-wrapper">
-  <iframe
-    id="task1Player"
-    src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1"
-    title="MYCASH Intro"
-    allow="autoplay; encrypted-media"
-    allowfullscreen>
-  </iframe>
-
-  <div id="task1Timer" class="video-timer">⏱ 00:00</div>
-
-  <button id="task1StartBtn" class="video-start-btn">
-    ▶ Start Task
-  </button>
-</div>
+        <div class="video-wrapper">
+          <!-- Replace src with your own embedded video later -->
+        <iframe
+  id="task1Player"
+  src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1"
+  title="MYCASH Intro"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
 
         </div>
         <div class="task-actions">
         <button class="task-btn" disabled>Watch full video to complete</button>
 
+          <span id="task1Check" class="task-check bad">❌ Not completed</span>
         </div>
       </div>
 
@@ -753,128 +730,21 @@
     let task3Done         = false;
 
 
+    // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
 
-let task1Duration = 0;
-let task1Remaining = 0;
-let task1TimerInterval = null;
-
+// Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
-  console.log("[YT] API ready");
 };
 
 
-function onTask1StateChange(event) {
-  console.log("[Task1] State:", event.data);
-
-  if (event.data === YT.PlayerState.PLAYING) {
-    startTask1Timer();
-  }
-
-  if (event.data === YT.PlayerState.PAUSED) {
-    pauseTask1Timer();
-  }
-
+function onTask1PlayerStateChange(event) {
   if (event.data === YT.PlayerState.ENDED) {
-    stopTask1Timer();
-    completeTask1();
+    completeTask1FromVideo();
   }
 }
-
-
-
-function initTask1PlayerAndStart() {
-  if (!ytReady || task1Player) return;
-
-  console.log("[Task1] Creating player");
-
-  task1Player = new YT.Player("task1Player", {
-    playerVars: {
-      controls: 0,
-      disablekb: 1,
-      fs: 0,
-      modestbranding: 1,
-      rel: 0,
-      iv_load_policy: 3
-    },
-    events: {
-      onReady: onTask1Ready,
-      onStateChange: onTask1StateChange
-    }
-  });
-}
-
-
-
-
-    function onTask1Ready() {
-  task1Duration = Math.floor(task1Player.getDuration());
-  task1Remaining = task1Duration;
-
-  updateTask1TimerUI();
-
-  console.log("[Task1] Ready, duration:", task1Duration);
-
-  task1Player.playVideo();
-}
-
-
-
-    function onTask1StateChange(event) {
-  console.log("[Task1] State:", event.data);
-
-  if (event.data === YT.PlayerState.PLAYING) {
-    startTask1Timer();
-  }
-
-  if (event.data === YT.PlayerState.PAUSED) {
-    pauseTask1Timer();
-  }
-
-  if (event.data === YT.PlayerState.ENDED) {
-    stopTask1Timer();
-    completeTask1();
-  }
-}
-
-
-    function startTask1Timer() {
-  if (task1TimerInterval) return;
-
-  task1TimerInterval = setInterval(() => {
-    if (task1Remaining > 0) {
-      task1Remaining--;
-      updateTask1TimerUI();
-    }
-  }, 1000);
-
-  console.log("[Task1] Timer started");
-}
-
-function pauseTask1Timer() {
-  clearInterval(task1TimerInterval);
-  task1TimerInterval = null;
-}
-
-function stopTask1Timer() {
-  pauseTask1Timer();
-  task1Remaining = 0;
-  updateTask1TimerUI();
-}
-
-function updateTask1TimerUI() {
-  const el = document.getElementById("task1Timer");
-  if (!el) return;
-
-  const m = String(Math.floor(task1Remaining / 60)).padStart(2,"0");
-  const s = String(task1Remaining % 60).padStart(2,"0");
-  el.textContent = `⏱ ${m}:${s}`;
-}
-
-    
-    
 
 function completeTask1FromVideo() {
   if (task1Done) return; // prevent double-run
@@ -1610,16 +1480,6 @@ setupAppKitProviderWatcher();
         });
       }
 
-const startBtn = document.getElementById("task1StartBtn");
-if (startBtn) {
-  startBtn.addEventListener("click", () => {
-    startBtn.style.display = "none";
-    initTask1PlayerAndStart();
-  });
-}
-
-
-      
 // Connect button inside reward card
 const connectBtnCard = document.getElementById("connectBtnCard");
 if (connectBtnCard) {
