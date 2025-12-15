@@ -527,11 +527,18 @@ yt task 1
         </p>
         <div class="video-wrapper">
           <!-- Replace src with your own embedded video later -->
-        <iframe
+<iframe
   id="task1Player"
-  src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1"
+  src="https://www.youtube.com/embed/dQw4w9WgXcQ
+    ?enablejsapi=1
+    &controls=0
+    &disablekb=1
+    &rel=0
+    &modestbranding=1
+    &iv_load_policy=3
+    &playsinline=1"
   title="MYCASH Intro"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allow="autoplay; encrypted-media"
   allowfullscreen
 ></iframe>
 
@@ -740,16 +747,54 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 
+
+let task1WatchSeconds = 0;
+let task1Duration = 0;
+let task1Interval = null;
+
 function onTask1PlayerStateChange(event) {
-  if (event.data === YT.PlayerState.ENDED) {
-    completeTask1FromVideo();
+  if (!task1Player) return;
+
+  // When video starts
+  if (event.data === YT.PlayerState.PLAYING) {
+    task1Duration = Math.floor(task1Player.getDuration());
+
+    if (!task1Interval) {
+      task1Interval = setInterval(() => {
+        const current = Math.floor(task1Player.getCurrentTime());
+
+        if (current > task1WatchSeconds) {
+          task1WatchSeconds = current;
+        }
+
+        // 95% watched → complete
+        if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
+          completeTask1FromVideo();
+        }
+      }, 1000);
+    }
+  }
+
+  // Pause or buffer → stop counting
+  if (
+    event.data === YT.PlayerState.PAUSED ||
+    event.data === YT.PlayerState.BUFFERING
+  ) {
+    clearInterval(task1Interval);
+    task1Interval = null;
   }
 }
 
+
+
+    
 function completeTask1FromVideo() {
-  if (task1Done) return; // prevent double-run
+  if (task1Done) return;
 
   task1Done = true;
+
+  clearInterval(task1Interval);
+  task1Interval = null;
 
   markTaskState(
     task1CheckEl,
@@ -760,8 +805,9 @@ function completeTask1FromVideo() {
 
   updateClaimState();
 
-  console.log("[Task1] Video fully watched");
+  console.log("[Task1] Verified full watch");
 }
+
 
 
 
@@ -1397,24 +1443,32 @@ async function connectFlow() {
   initTask1Player();
 }
 
-function initTask1Player() {
-  if (!ytReady) {
-    console.warn("YouTube API not ready yet");
-    return;
-  }
 
-  if (task1Player) {
-    return; // already created
-  }
+    
+    
+function initTask1Player() {
+  if (!ytReady || task1Player) return;
 
   task1Player = new YT.Player("task1Player", {
+    playerVars: {
+      controls: 0,
+      disablekb: 1,
+      rel: 0,
+      modestbranding: 1,
+      iv_load_policy: 3
+    },
     events: {
       onStateChange: onTask1PlayerStateChange
     }
   });
 
-  console.log("[Task1] YouTube player initialized");
+  console.log("[Task1] Player ready");
 }
+
+
+
+
+    
 
     
     function showRewardPage(){
