@@ -1,4 +1,4 @@
-ring time <!doctype html>
+<!doctype html>
 <html> 
 <head>
   <meta charset="utf-8"/>
@@ -876,19 +876,10 @@ function waitForRealTask1Video() {
 function onTask1PlayerStateChange(event) {
   if (!task1Player) return;
 
-  // ▶ Playing
+  // ▶ Playing (ad OR real video)
   if (event.data === YT.PlayerState.PLAYING) {
-function onTask1PlayerStateChange(event) {
-  if (!task1Player) return;
-
-  // ▶ Something is playing (ad OR real video)
-  if (event.data === YT.PlayerState.PLAYING) {
-    // 🔥 If duration is 0, ad is still playing
-    if (!task1Duration || task1Duration === 0) {
-      waitForRealTask1Video();
-    } else {
-      startTask1Timer();
-    }
+    // Always wait for real duration (works for ads & no-ads)
+    waitForRealTask1Video();
   }
 
   // ⏸ Pause / buffering
@@ -900,20 +891,6 @@ function onTask1PlayerStateChange(event) {
     task1Interval = null;
   }
 }
-
-  }
-
-  // ⏸ Pause / Buffer
-  if (
-    event.data === YT.PlayerState.PAUSED ||
-    event.data === YT.PlayerState.BUFFERING
-  ) {
-    clearInterval(task1Interval);
-    task1Interval = null;
-  }
-}
-
-
 
     
 function completeTask1FromVideo() {
