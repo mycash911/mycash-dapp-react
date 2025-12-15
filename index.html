@@ -369,6 +369,24 @@
   background:rgba(2,6,23,0.85);
 }
 
+/* Cover YouTube end-screen suggestions */
+.video-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,0.85);
+  z-index: 4;
+  display: none;
+}
+
+/* Show overlay when video ends */
+.video-wrapper.ended::after {
+  display: block;
+}
+
+
+    
+
 
     .task-actions{
       margin-top:0.6rem;
@@ -562,7 +580,7 @@
     <div class="video-wrapper">
   <iframe
     id="task1Player"
-    src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1"
+src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3"
     title="MYCASH Intro"
     allow="autoplay; encrypted-media"
     allowfullscreen>
@@ -795,14 +813,16 @@ function onTask1StateChange(event) {
     pauseTask1Timer();
   }
 
-  if (event.data === YT.PlayerState.ENDED) {
-    stopTask1Timer();
-    completeTask1();
-  }
+if (event.data === YT.PlayerState.ENDED) {
+  stopTask1Timer();
+
+  // 🔒 Hide suggestions overlay
+  document
+    .querySelector(".video-wrapper")
+    ?.classList.add("ended");
+
+  completeTask1();
 }
-
-
-
 
 
 function startTask1Timer() {
