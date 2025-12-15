@@ -801,28 +801,26 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 
-
 function onTask1StateChange(event) {
   console.log("[Task1] State:", event.data);
 
   if (event.data === YT.PlayerState.PLAYING) {
     startTask1Timer();
-  }
-
-  if (event.data === YT.PlayerState.PAUSED) {
+  } 
+  else if (event.data === YT.PlayerState.PAUSED) {
     pauseTask1Timer();
+  } 
+  else if (event.data === YT.PlayerState.ENDED) {
+    stopTask1Timer();
+
+    // 🔒 Hide suggestions overlay
+    const wrapper = document.querySelector(".video-wrapper");
+    if (wrapper) wrapper.classList.add("ended");
+
+    completeTask1();
   }
-
-if (event.data === YT.PlayerState.ENDED) {
-  stopTask1Timer();
-
-  // 🔒 Hide suggestions overlay
-  document
-    .querySelector(".video-wrapper")
-    ?.classList.add("ended");
-
-  completeTask1();
 }
+
 
 
 function startTask1Timer() {
