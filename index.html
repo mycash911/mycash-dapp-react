@@ -1,4 +1,4 @@
-<!doctype html>
+ring time <!doctype html>
 <html> 
 <head>
   <meta charset="utf-8"/>
@@ -823,7 +823,29 @@ let task1Interval = null;
 function updateTask1TimerUI() {
   const textEl = document.getElementById("task1Timer");
   const ringEl = document.getElementById("task1Ring");
-  if (!textEl || !ringEl || !task1Duration) return;
+
+
+function updateTask1TimerUI() {
+  const textEl = document.getElementById("task1Timer");
+  const ringEl = document.getElementById("task1Ring");
+  if (!textEl || !ringEl) return;
+
+  // ⏱️ COUNT UP — always works
+  const m = String(Math.floor(task1WatchSeconds / 60)).padStart(2,"0");
+  const s = String(task1WatchSeconds % 60).padStart(2,"0");
+  textEl.textContent = `${m}:${s}`;
+
+  // 🔵 Ring only animates when duration is known
+  if (task1Duration > 0) {
+    const progress = Math.min(task1WatchSeconds / task1Duration, 1);
+    const circumference = 113;
+    ringEl.style.strokeDashoffset =
+      circumference - progress * circumference;
+  }
+}
+
+
+  
 
   const remaining = Math.max(task1Duration - task1WatchSeconds, 0);
   const m = String(Math.floor(remaining / 60)).padStart(2,"0");
@@ -836,53 +858,35 @@ function updateTask1TimerUI() {
     circumference - progress * circumference;
 }
 
-function waitForRealTask1Video() {
-  const checker = setInterval(() => {
-    if (!task1Player) return;
-
-    const d = Math.floor(task1Player.getDuration());
-
-    // ✅ Real video detected (ads finished)
-    if (d > 0) {
-      clearInterval(checker);
-      task1Duration = d;
-      startTask1Timer();
-    }
-  }, 500);
-}
-
-
-
-    function startTask1Timer() {
-  if (task1Interval) return;
-
-  task1Interval = setInterval(() => {
-    const current = Math.floor(task1Player.getCurrentTime());
-
-    if (current > task1WatchSeconds) {
-      task1WatchSeconds = current;
-      updateTask1TimerUI();
-    }
-
-    // ✅ 95% watched
-    if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
-      completeTask1FromVideo();
-    }
-  }, 1000);
-}
 
 
 
 function onTask1PlayerStateChange(event) {
   if (!task1Player) return;
 
-  // ▶ Playing (ad OR real video)
+  // ▶ Playing
   if (event.data === YT.PlayerState.PLAYING) {
-    // Always wait for real duration (works for ads & no-ads)
-    waitForRealTask1Video();
+const d = Math.floor(task1Player.getDuration());
+if (d > 0) task1Duration = d;
+
+    if (!task1Interval) {
+      task1Interval = setInterval(() => {
+        const current = Math.floor(task1Player.getCurrentTime());
+
+        if (current > task1WatchSeconds) {
+          task1WatchSeconds = current;
+          updateTask1TimerUI();
+        }
+
+        // ✅ 95% watched
+        if (task1Duration > 0 && task1WatchSeconds >= task1Duration * 0.95) {
+          completeTask1FromVideo();
+        }
+      }, 1000);
+    }
   }
 
-  // ⏸ Pause / buffering
+  // ⏸ Pause / Buffer
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
@@ -891,6 +895,8 @@ function onTask1PlayerStateChange(event) {
     task1Interval = null;
   }
 }
+
+
 
     
 function completeTask1FromVideo() {
@@ -1583,9 +1589,9 @@ function onTask1PlayerReady() {
 
   // Reset counters
   task1WatchSeconds = 0;
-task1WatchSeconds = 0;
-task1Duration = 0; // ⬅ reset for ads
-updateTask1TimerUI();
+  task1Duration = Math.floor(task1Player.getDuration());
+
+  updateTask1TimerUI();
 
   // 🔥 REQUIRED: start playback
   task1Player.playVideo();
