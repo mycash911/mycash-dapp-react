@@ -351,6 +351,25 @@
 }
 
 
+
+
+    .video-start-btn{
+  position:absolute;
+  inset:0;
+  background:rgba(2,6,23,0.75);
+  color:#e5e7eb;
+  border:none;
+  font-size:1rem;
+  font-weight:600;
+  cursor:pointer;
+  z-index:6;
+}
+
+.video-start-btn:hover{
+  background:rgba(2,6,23,0.85);
+}
+
+
     .task-actions{
       margin-top:0.6rem;
       display:flex;
@@ -537,18 +556,25 @@
         <p>
           Watch this video to understand how MYCASH and the reward system works.
         </p>
-        <div class="video-wrapper">
-          <!-- Replace src with your own embedded video later -->
-        <iframe
-  id="task1Player"
-  src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1"
-  title="MYCASH Intro"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  allowfullscreen
-></iframe>
-<div id="task1Timer" class="video-timer">⏱ 00:00</div>
 
-        </div>
+
+        
+    <div class="video-wrapper">
+  <iframe
+    id="task1Player"
+    src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&playsinline=1"
+    title="MYCASH Intro"
+    allow="autoplay; encrypted-media"
+    allowfullscreen>
+  </iframe>
+
+  <div id="task1Timer" class="video-timer">⏱ 00:00</div>
+
+  <button id="task1StartBtn" class="video-start-btn">
+    ▶ Start Task
+  </button>
+</div>
+
         <div class="task-actions">
         <button class="task-btn" disabled>Watch full video to complete</button>
 
@@ -746,15 +772,16 @@
     // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
+
 let task1Duration = 0;
 let task1Remaining = 0;
 let task1TimerInterval = null;
 
-
-// Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
+  console.log("[YT] API ready");
 };
+
 
 
 function onTask1StateChange(event) {
@@ -764,10 +791,7 @@ function onTask1StateChange(event) {
     startTask1Timer();
   }
 
-  if (
-    event.data === YT.PlayerState.PAUSED ||
-    event.data === YT.PlayerState.BUFFERING
-  ) {
+  if (event.data === YT.PlayerState.PAUSED) {
     pauseTask1Timer();
   }
 
@@ -780,8 +804,9 @@ function onTask1StateChange(event) {
 
 
 
-   function startTask1Timer() {
-  if (task1TimerInterval) return; // prevents double intervals
+
+function startTask1Timer() {
+  if (task1TimerInterval) return;
 
   task1TimerInterval = setInterval(() => {
     if (task1Remaining > 0) {
@@ -794,10 +819,8 @@ function onTask1StateChange(event) {
 }
 
 function pauseTask1Timer() {
-  if (task1TimerInterval) {
-    clearInterval(task1TimerInterval);
-    task1TimerInterval = null;
-  }
+  clearInterval(task1TimerInterval);
+  task1TimerInterval = null;
 }
 
 function stopTask1Timer() {
@@ -814,7 +837,6 @@ function updateTask1TimerUI() {
   const s = String(task1Remaining % 60).padStart(2,"0");
   el.textContent = `⏱ ${m}:${s}`;
 }
-
 
 
 
@@ -1489,7 +1511,7 @@ async function connectFlow() {
 
 
 
-  function onTask1Ready() {
+function onTask1Ready() {
   task1Duration = Math.floor(task1Player.getDuration());
   task1Remaining = task1Duration;
 
@@ -1497,31 +1519,29 @@ async function connectFlow() {
 
   console.log("[Task1] Ready, duration:", task1Duration);
 
-  // 🔥 REQUIRED: start playback manually
   task1Player.playVideo();
-
-
- // 🔥 INIT YouTube player ONLY when visible
-  initTask1Player();
 }
 
-function initTask1Player() {
-  if (!ytReady) {
-    console.warn("YouTube API not ready yet");
-    return;
-  }
 
-  if (task1Player) {
-    return; // already created
-  }
+function initTask1PlayerAndStart() {
+  if (!ytReady || task1Player) return;
+
+  console.log("[Task1] Creating player");
 
   task1Player = new YT.Player("task1Player", {
+    playerVars: {
+      controls: 0,
+      disablekb: 1,
+      fs: 0,
+      modestbranding: 1,
+      rel: 0,
+      iv_load_policy: 3
+    },
     events: {
-      onStateChange: onTask1PlayerStateChange
+      onReady: onTask1Ready,
+      onStateChange: onTask1StateChange
     }
   });
-
-  console.log("[Task1] YouTube player initialized");
 }
 
 
@@ -1580,6 +1600,10 @@ function initTask1Player() {
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
       }
 
+
+
+      
+
       updateClaimState();
 setupAppKitProviderWatcher();
 
@@ -1590,6 +1614,17 @@ setupAppKitProviderWatcher();
         });
       }
 
+
+const startBtn = document.getElementById("task1StartBtn");
+if (startBtn) {
+  startBtn.addEventListener("click", () => {
+    startBtn.style.display = "none";
+    initTask1PlayerAndStart();
+  });
+}
+
+
+      
 // Connect button inside reward card
 const connectBtnCard = document.getElementById("connectBtnCard");
 if (connectBtnCard) {
