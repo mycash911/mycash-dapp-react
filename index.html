@@ -758,6 +758,8 @@ window.onYouTubeIframeAPIReady = function () {
 
 
 function onTask1StateChange(event) {
+  console.log("[Task1] State:", event.data);
+
   if (event.data === YT.PlayerState.PLAYING) {
     startTask1Timer();
   }
@@ -778,8 +780,8 @@ function onTask1StateChange(event) {
 
 
 
-    function startTask1Timer() {
-  if (task1TimerInterval) return;
+   function startTask1Timer() {
+  if (task1TimerInterval) return; // prevents double intervals
 
   task1TimerInterval = setInterval(() => {
     if (task1Remaining > 0) {
@@ -787,6 +789,8 @@ function onTask1StateChange(event) {
       updateTask1TimerUI();
     }
   }, 1000);
+
+  console.log("[Task1] Timer started");
 }
 
 function pauseTask1Timer() {
@@ -1485,36 +1489,39 @@ async function connectFlow() {
 
 
 
-    function onTask1Ready() {
+  function onTask1Ready() {
   task1Duration = Math.floor(task1Player.getDuration());
   task1Remaining = task1Duration;
 
   updateTask1TimerUI();
 
-  console.log("[Task1] Duration:", task1Duration, "seconds");
+  console.log("[Task1] Ready, duration:", task1Duration);
+
+  // 🔥 REQUIRED: start playback manually
+  task1Player.playVideo();
+
+
+ // 🔥 INIT YouTube player ONLY when visible
+  initTask1Player();
 }
 
-
 function initTask1Player() {
-  if (!ytReady || task1Player) return;
+  if (!ytReady) {
+    console.warn("YouTube API not ready yet");
+    return;
+  }
+
+  if (task1Player) {
+    return; // already created
+  }
 
   task1Player = new YT.Player("task1Player", {
-    playerVars: {
-      controls: 0,        // 🚫 hide controls
-      disablekb: 1,       // 🚫 disable keyboard
-      fs: 0,              // 🚫 fullscreen off
-      modestbranding: 1,
-      rel: 0,
-      iv_load_policy: 3,
-      playsinline: 1
-    },
     events: {
-      onReady: onTask1Ready,
-      onStateChange: onTask1StateChange
+      onStateChange: onTask1PlayerStateChange
     }
   });
 
-  console.log("[Task1] Player initialized");
+  console.log("[Task1] YouTube player initialized");
 }
 
 
