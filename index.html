@@ -352,6 +352,47 @@
 }
 
 
+    .video-progress{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:44px;
+  height:44px;
+  z-index:5;
+}
+
+.progress-ring{
+  transform:rotate(-90deg);
+}
+
+.ring-bg{
+  fill:none;
+  stroke:rgba(148,163,184,0.25);
+  stroke-width:4;
+}
+
+.ring-progress{
+  fill:none;
+  stroke:#3b82f6;
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-dasharray:113;
+  stroke-dashoffset:113;
+  transition:stroke-dashoffset 0.4s linear, stroke 0.3s ease;
+}
+
+.ring-text{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.65rem;
+  font-family:ui-monospace, monospace;
+  color:#e5e7eb;
+}
+
+
     
     .task-actions{
       margin-top:0.6rem;
@@ -549,7 +590,25 @@
   allowfullscreen>
 </iframe>
 
-<div id="task1Timer" class="video-timer">⏱ 00:00</div>
+<div class="video-progress">
+  <svg class="progress-ring" width="44" height="44">
+    <circle
+      class="ring-bg"
+      cx="22"
+      cy="22"
+      r="18"
+    />
+    <circle
+      id="task1Ring"
+      class="ring-progress"
+      cx="22"
+      cy="22"
+      r="18"
+    />
+  </svg>
+  <div id="task1Timer" class="ring-text">00:00</div>
+</div>
+
 
         </div>
         <div class="task-actions">
@@ -760,15 +819,23 @@ let task1WatchSeconds = 0;
 let task1Duration = 0;
 let task1Interval = null;
 
+    
 function updateTask1TimerUI() {
-  const el = document.getElementById("task1Timer");
-  if (!el) return;
+  const textEl = document.getElementById("task1Timer");
+  const ringEl = document.getElementById("task1Ring");
+  if (!textEl || !ringEl || !task1Duration) return;
 
   const remaining = Math.max(task1Duration - task1WatchSeconds, 0);
   const m = String(Math.floor(remaining / 60)).padStart(2,"0");
   const s = String(remaining % 60).padStart(2,"0");
-  el.textContent = `⏱ ${m}:${s}`;
+  textEl.textContent = `${m}:${s}`;
+
+  const progress = Math.min(task1WatchSeconds / task1Duration, 1);
+  const circumference = 113; // 2πr where r=18
+  ringEl.style.strokeDashoffset =
+    circumference - progress * circumference;
 }
+
 
 
 
@@ -819,6 +886,8 @@ function completeTask1FromVideo() {
 
   const timer = document.getElementById("task1Timer");
   if (timer) timer.textContent = "✅ Completed";
+const ring = document.getElementById("task1Ring");
+if (ring) ring.style.stroke = "#22c55e";
 
   markTaskState(
     task1CheckEl,
