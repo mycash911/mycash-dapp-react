@@ -523,15 +523,18 @@
         </p>
         <div class="video-wrapper">
           <!-- Replace src with your own embedded video later -->
-          <iframe
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            title="MYCASH Intro"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
+        <iframe
+  id="task1Player"
+  src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1"
+  title="MYCASH Intro"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
+
         </div>
         <div class="task-actions">
-          <button id="task1Btn" class="task-btn">Watched </button>
+        <button class="task-btn" disabled>Watch full video to complete</button>
+
           <span id="task1Check" class="task-check bad">❌ Not completed</span>
         </div>
       </div>
@@ -667,6 +670,8 @@
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
 
   <!-- Vite / React entry: this runs src/main.jsx (and appkit.ts) -->
   <script type="module" src="/src/main.jsx"></script>
@@ -719,6 +724,41 @@
     let task1Done         = false;
     let task2Eligible     = false;
     let task3Done         = false;
+
+
+    // === YouTube Task 1 Player ===
+let task1Player = null;
+
+window.onYouTubeIframeAPIReady = function () {
+  task1Player = new YT.Player("task1Player", {
+    events: {
+      onStateChange: onTask1PlayerStateChange
+    }
+  });
+};
+
+function onTask1PlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    completeTask1FromVideo();
+  }
+}
+
+function completeTask1FromVideo() {
+  if (task1Done) return; // prevent double-run
+
+  task1Done = true;
+
+  markTaskState(
+    task1CheckEl,
+    true,
+    "Watched full video",
+    "Not completed"
+  );
+
+  updateClaimState();
+
+  console.log("[Task1] Video fully watched");
+}
 
 
 
@@ -1438,13 +1478,12 @@ if (connectBtnCard) {
         backToRewardsBtn.addEventListener("click", showRewardPage);
       }
 
-      if(task1Btn){
-        task1Btn.addEventListener("click", function(){
-          task1Done = true;
-          markTaskState(task1CheckEl, true, "Task 1 completed (demo)", "Not completed");
-          updateClaimState();
-        });
-      }
+      
+
+
+
+
+      
 
       if(task2CheckBtn){
         task2CheckBtn.addEventListener("click", handleTask2Check);
