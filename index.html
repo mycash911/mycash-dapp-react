@@ -1,3 +1,7 @@
+yt task 1 
+
+
+
 <!doctype html>
 <html> 
 <head>
@@ -729,9 +733,10 @@
     // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
-
-let lastAllowedTime = 0;
-let seekCheckTimer = null;
+let task1Duration = 0;
+let task1WatchedSeconds = 0;
+let task1LastTime = 0;
+let task1WatchTimer = null;
 
 // Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
@@ -739,52 +744,27 @@ window.onYouTubeIframeAPIReady = function () {
 };
 
 
-function onTask1PlayerStateChange(event) {
+function onTask1StateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
-    startSeekProtection();
+    startTask1WatchTimer();
   }
 
-  if (event.data === YT.PlayerState.PAUSED) {
-    stopSeekProtection();
+  if (
+    event.data === YT.PlayerState.PAUSED ||
+    event.data === YT.PlayerState.BUFFERING
+  ) {
+    stopTask1WatchTimer();
   }
 
   if (event.data === YT.PlayerState.ENDED) {
-    stopSeekProtection();
-    completeTask1FromVideo();
+    stopTask1WatchTimer();
+    // END alone is not trusted — duration logic handles completion
   }
 }
-
-
-
-function startSeekProtection() {
-  if (seekCheckTimer) return;
-
-  seekCheckTimer = setInterval(() => {
-    if (!task1Player || !task1Player.getCurrentTime) return;
-
-    const currentTime = task1Player.getCurrentTime();
-
-    // If user jumped forward more than 1.2s → snap back
-    if (currentTime > lastAllowedTime + 1.2) {
-      console.warn("[Task1] Seek detected → reverting");
-
-      task1Player.seekTo(lastAllowedTime, true);
-    } else {
-      lastAllowedTime = currentTime;
-    }
-  }, 600);
-}
-
-function stopSeekProtection() {
-  if (seekCheckTimer) {
-    clearInterval(seekCheckTimer);
-    seekCheckTimer = null;
-  }
-}
-
 
 
     
+
 function completeTask1FromVideo() {
   if (task1Done) return; // prevent double-run
 
@@ -1442,17 +1422,63 @@ function initTask1Player() {
   task1Player = new YT.Player("task1Player", {
     playerVars: {
       controls: 1,
-      disablekb: 1,     // disable keyboard seeking
-      modestbranding: 1,
-      rel: 0
+      disablekb: 1,
+      rel: 0,
+      modestbranding: 1
     },
     events: {
-      onStateChange: onTask1PlayerStateChange
+      onReady: onTask1Ready,
+      onStateChange: onTask1StateChange
     }
   });
 
-  console.log("[Task1] YouTube player initialized (seek protection ON)");
+  console.log("[Task1] Player initialized");
 }
+
+
+    function onTask1Ready() {
+  task1Duration = task1Player.getDuration();
+  console.log("[Task1] Duration:", task1Duration, "seconds");
+}
+
+
+
+
+    function startTask1WatchTimer() {
+  if (task1WatchTimer) return;
+
+  task1WatchTimer = setInterval(() => {
+    if (!task1Player) return;
+
+    const currentTime = task1Player.getCurrentTime();
+
+    // Count only forward natural playback
+    if (currentTime > task1LastTime && currentTime - task1LastTime < 1.5) {
+      task1WatchedSeconds += (currentTime - task1LastTime);
+    }
+
+    task1LastTime = currentTime;
+
+    // Completion check (2s tolerance)
+    if (
+      task1Duration > 0 &&
+      task1WatchedSeconds >= task1Duration - 2
+    ) {
+      completeTask1FromVideo();
+      stopTask1WatchTimer();
+    }
+
+  }, 1000);
+}
+
+function stopTask1WatchTimer() {
+  if (task1WatchTimer) {
+    clearInterval(task1WatchTimer);
+    task1WatchTimer = null;
+  }
+}
+
+    
 
     
     function showRewardPage(){
