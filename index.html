@@ -818,11 +818,11 @@ window.onYouTubeIframeAPIReady = function () {
 let task1WatchSeconds = 0;
 let task1Duration = 0;
 let task1Interval = null;
-
+let lastVideoTime = 0;
+let stableTicks = 0;
+const STABLE_REQUIRED = 3; // seconds of real playback
     
-function updateTask1TimerUI() {
-  const textEl = document.getElementById("task1Timer");
-  const ringEl = document.getElementById("task1Ring");
+
 
 
 function updateTask1TimerUI() {
@@ -830,12 +830,10 @@ function updateTask1TimerUI() {
   const ringEl = document.getElementById("task1Ring");
   if (!textEl || !ringEl) return;
 
-// ⏱️ Count UP (never lies during ads)
   const m = String(Math.floor(task1WatchSeconds / 60)).padStart(2, "0");
   const s = String(task1WatchSeconds % 60).padStart(2, "0");
   textEl.textContent = `${m}:${s}`;
 
-    // 🔵 Progress ring only when duration known
   if (task1Duration > 0) {
     const progress = Math.min(task1WatchSeconds / task1Duration, 1);
     const circumference = 113;
@@ -844,27 +842,12 @@ function updateTask1TimerUI() {
   }
 }
 
+
   
 
-  const remaining = Math.max(task1Duration - task1WatchSeconds, 0);
-  const m = String(Math.floor(remaining / 60)).padStart(2,"0");
-  const s = String(remaining % 60).padStart(2,"0");
-  textEl.textContent = `${m}:${s}`;
-
-  const progress = Math.min(task1WatchSeconds / task1Duration, 1);
-  const circumference = 113; // 2πr where r=18
-  ringEl.style.strokeDashoffset =
-    circumference - progress * circumference;
-}
-
-
-
-let lastTime = 0;
-
-function onTask1PlayerStateChange(event) {
+  function onTask1PlayerStateChange(event) {
   if (!task1Player) return;
 
-  // ▶ PLAYING (video OR ad)
   if (event.data === YT.PlayerState.PLAYING) {
 
     if (!task1Interval) {
@@ -872,20 +855,26 @@ function onTask1PlayerStateChange(event) {
         const current = Math.floor(task1Player.getCurrentTime());
         const duration = Math.floor(task1Player.getDuration());
 
-        // ❌ Ads or buffering → time not moving
-        if (current <= lastTime) return;
+        // 🚫 Ads or buffering → time not moving
+        if (current <= lastVideoTime || current === 0) {
+          stableTicks = 0;
+          return;
+        }
 
-        // ✅ REAL video is playing
-        lastTime = current;
+        // ✅ Real video playback
+        stableTicks++;
+        lastVideoTime = current;
+
+        // ⏳ Wait for stable playback (ads never pass this)
+        if (stableTicks < STABLE_REQUIRED) return;
+
         task1WatchSeconds = current;
 
-        if (duration > 0) {
-          task1Duration = duration;
-        }
+        if (duration > 0) task1Duration = duration;
 
         updateTask1TimerUI();
 
-        // ✅ Completion check (95%)
+        // ✅ Completion
         if (
           task1Duration > 0 &&
           task1WatchSeconds >= task1Duration * 0.95
@@ -897,13 +886,14 @@ function onTask1PlayerStateChange(event) {
     }
   }
 
-  // ⏸ Pause, buffer, ad switch
+  // ⏸ Pause / buffering / ad switch
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
   ) {
     clearInterval(task1Interval);
     task1Interval = null;
+    stableTicks = 0;
   }
 }
 
@@ -1594,19 +1584,15 @@ async function connectFlow() {
   console.log("[Task1] Player created");
 }
 
-
 function onTask1PlayerReady() {
-  console.log("[Task1] Player READY, starting video");
-
-  // Reset counters
   task1WatchSeconds = 0;
-  task1Duration = Math.floor(task1Player.getDuration());
+  task1Duration = 0;
+  lastVideoTime = 0;
+  stableTicks = 0;
 
   updateTask1TimerUI();
-
-  // 🔥 REQUIRED: start playback
-  task1Player.playVideo();
 }
+
 
 
     
