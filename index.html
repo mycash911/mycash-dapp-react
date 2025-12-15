@@ -618,6 +618,46 @@
         </div>
       </div>
 
+
+
+
+
+<!-- Task 5: video -->
+<div class="task-section">
+  <h3>Task 5 — Watch Advanced Guide</h3>
+  <p>Watch this video to unlock the next reward step.</p>
+
+  <div class="video-wrapper">
+    <iframe
+      id="task5Player"
+      src="https://www.youtube.com/embed/BYfoO4sDqBo?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
+      allow="autoplay; encrypted-media"
+      allowfullscreen>
+    </iframe>
+
+    <div class="video-progress">
+      <svg class="progress-ring" width="44" height="44">
+        <circle class="ring-bg" cx="22" cy="22" r="18"></circle>
+        <circle id="task5Ring" class="ring-progress" cx="22" cy="22" r="18"></circle>
+      </svg>
+      <div id="task5Timer" class="ring-text">00:00</div>
+    </div>
+  </div>
+
+  <div class="task-actions">
+    <button class="task-btn" disabled>Watch full video to complete</button>
+    <span id="task5Check" class="task-check bad">❌ Not completed</span>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+      
       <!-- Task 2: wallet balance checker -->
       <div class="task-section">
         <h3>Task 2 — Wallet Balance Check</h3>
@@ -803,11 +843,45 @@
     let task1Done         = false;
     let task2Eligible     = false;
     let task3Done         = false;
+    let task5Done = false;
+
 
 
     // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
+    const videoTasks = {
+  task1: {
+    playerId: "task1Player",
+    ringId: "task1Ring",
+    timerId: "task1Timer",
+    checkEl: null,          // will assign later
+    doneFlag: () => task1Done = true,
+
+    player: null,
+    watched: 0,
+    duration: 0,
+    interval: null,
+    lastTime: 0,
+    stableTicks: 0
+  },
+ task5: {
+    playerId: "task5Player",
+    ringId: "task5Ring",
+    timerId: "task5Timer",
+    checkEl: null,
+    doneFlag: () => task5Done = true,
+
+    player: null,
+    watched: 0,
+    duration: 0,
+    interval: null,
+    lastTime: 0,
+    stableTicks: 0
+ }
+      
+};
+
 
 // Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
@@ -824,107 +898,84 @@ const STABLE_REQUIRED = 3; // seconds of real playback
     
 
 
-
-function updateTask1TimerUI() {
-  const textEl = document.getElementById("task1Timer");
-  const ringEl = document.getElementById("task1Ring");
+function updateVideoTimerUI(task) {
+  const textEl = document.getElementById(task.timerId);
+  const ringEl = document.getElementById(task.ringId);
   if (!textEl || !ringEl) return;
 
-  const m = String(Math.floor(task1WatchSeconds / 60)).padStart(2, "0");
-  const s = String(task1WatchSeconds % 60).padStart(2, "0");
+  const m = String(Math.floor(task.watched / 60)).padStart(2, "0");
+  const s = String(task.watched % 60).padStart(2, "0");
   textEl.textContent = `${m}:${s}`;
 
-  if (task1Duration > 0) {
-    const progress = Math.min(task1WatchSeconds / task1Duration, 1);
-    const circumference = 113;
-    ringEl.style.strokeDashoffset =
-      circumference - progress * circumference;
+  if (task.duration > 0) {
+    const progress = Math.min(task.watched / task.duration, 1);
+    ringEl.style.strokeDashoffset = 113 - progress * 113;
   }
 }
 
 
   
-
-  function onTask1PlayerStateChange(event) {
-  if (!task1Player) return;
+function onVideoStateChange(task, event) {
+  if (!task.player) return;
 
   if (event.data === YT.PlayerState.PLAYING) {
+    if (!task.interval) {
+      task.interval = setInterval(() => {
+        const current = Math.floor(task.player.getCurrentTime());
+        const duration = Math.floor(task.player.getDuration());
 
-    if (!task1Interval) {
-      task1Interval = setInterval(() => {
-        const current = Math.floor(task1Player.getCurrentTime());
-        const duration = Math.floor(task1Player.getDuration());
-
-        // 🚫 Ads or buffering → time not moving
-        if (current <= lastVideoTime || current === 0) {
-          stableTicks = 0;
+        // Ads / buffering
+        if (current <= task.lastTime || current === 0) {
+          task.stableTicks = 0;
           return;
         }
 
-        // ✅ Real video playback
-        stableTicks++;
-        lastVideoTime = current;
+        task.stableTicks++;
+        task.lastTime = current;
 
-        // ⏳ Wait for stable playback (ads never pass this)
-        if (stableTicks < STABLE_REQUIRED) return;
+        if (task.stableTicks < 3) return; // real playback only
 
-        task1WatchSeconds = current;
+        task.watched = current;
+        if (duration > 0) task.duration = duration;
 
-        if (duration > 0) task1Duration = duration;
+        updateVideoTimerUI(task);
 
-        updateTask1TimerUI();
-
-        // ✅ Completion
-        if (
-          task1Duration > 0 &&
-          task1WatchSeconds >= task1Duration * 0.95
-        ) {
-          completeTask1FromVideo();
+        if (task.duration && task.watched >= task.duration * 0.95) {
+          completeVideoTask(task);
         }
-
       }, 1000);
     }
   }
 
-  // ⏸ Pause / buffering / ad switch
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
   ) {
-    clearInterval(task1Interval);
-    task1Interval = null;
-    stableTicks = 0;
+    clearInterval(task.interval);
+    task.interval = null;
+    task.stableTicks = 0;
   }
 }
 
 
-
     
-function completeTask1FromVideo() {
-  if (task1Done) return;
+function completeVideoTask(task) {
+  if (task.done) return;
 
-  task1Done = true;
+  task.done = true;
+  clearInterval(task.interval);
+  task.interval = null;
 
-  clearInterval(task1Interval);
-  task1Interval = null;
+  document.getElementById(task.ringId).style.stroke = "#22c55e";
+  document.getElementById(task.timerId).textContent = "✅ Completed";
 
-  const timer = document.getElementById("task1Timer");
-  if (timer) timer.textContent = "✅ Completed";
-const ring = document.getElementById("task1Ring");
-if (ring) ring.style.stroke = "#22c55e";
+  if (task.checkEl) {
+    markTaskState(task.checkEl, true, "Watched full video", "Not completed");
+  }
 
-  markTaskState(
-    task1CheckEl,
-    true,
-    "Watched full video",
-    "Not completed"
-  );
-
+  task.doneFlag(); // sets task1Done / task5Done
   updateClaimState();
-
-  console.log("[Task1] Video fully watched");
 }
-
 
 
 
@@ -1095,7 +1146,7 @@ if(connectBtnCard){
     }
 
     function updateClaimState(){
-      const allTasksDone = task1Done && task2Eligible && task3Done;
+      const allTasksDone = task1Done &&  task5Done && task2Eligible && task3Done;
       if(claimBtn){
         claimBtn.disabled = !(isWalletConnected && allTasksDone);
       }
@@ -1558,15 +1609,21 @@ async function connectFlow() {
   if(taskPageEl)   taskPageEl.style.display   = "block";
 
   // 🔥 INIT YouTube player ONLY when visible
-  initTask1Player();
+initVideoTask("task1");
+       initVideoTask("task5");
 }
 
 
     
- function initTask1Player() {
-  if (!ytReady || task1Player) return;
+function initVideoTask(taskKey) {
+  if (!ytReady) return;
 
-  task1Player = new YT.Player("task1Player", {
+  const task = videoTasks[taskKey];
+  if (task.player) return;
+
+  task.checkEl = document.getElementById(taskKey + "Check");
+
+  task.player = new YT.Player(task.playerId, {
     playerVars: {
       controls: 0,
       disablekb: 1,
@@ -1576,12 +1633,16 @@ async function connectFlow() {
       playsinline: 1
     },
     events: {
-      onReady: onTask1PlayerReady,          // 🔥 ADD THIS
-      onStateChange: onTask1PlayerStateChange
+      onReady: () => {
+        task.watched = 0;
+        task.duration = 0;
+        task.lastTime = 0;
+        task.stableTicks = 0;
+        updateVideoTimerUI(task);
+      },
+      onStateChange: (e) => onVideoStateChange(task, e)
     }
   });
-
-  console.log("[Task1] Player created");
 }
 
 function onTask1PlayerReady() {
