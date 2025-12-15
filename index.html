@@ -1,7 +1,3 @@
-yt task 1 
-
-
-
 <!doctype html>
 <html> 
 <head>
@@ -337,7 +333,23 @@ yt task 1
       width:100%;
       height:100%;
       border:0;
-    }
+    
+  } 
+ 
+.video-timer{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:rgba(2,6,23,0.85);
+  border:1px solid rgba(148,163,184,0.6);
+  color:#e5e7eb;
+  font-size:0.75rem;
+  padding:4px 8px;
+  border-radius:999px;
+  font-family:ui-monospace, monospace;
+  z-index:5;
+}
+
 
     .task-actions{
       margin-top:0.6rem;
@@ -534,6 +546,7 @@ yt task 1
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
   allowfullscreen
 ></iframe>
+<div id="task1Timer" class="video-timer">⏱ 00:00</div>
 
         </div>
         <div class="task-actions">
@@ -734,9 +747,9 @@ yt task 1
 let task1Player = null;
 let ytReady = false;
 let task1Duration = 0;
-let task1WatchedSeconds = 0;
-let task1LastTime = 0;
-let task1WatchTimer = null;
+let task1Remaining = 0;
+let task1TimerInterval = null;
+
 
 // Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
@@ -746,24 +759,78 @@ window.onYouTubeIframeAPIReady = function () {
 
 function onTask1StateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
-    startTask1WatchTimer();
+    startTask1Timer();
   }
 
   if (
     event.data === YT.PlayerState.PAUSED ||
     event.data === YT.PlayerState.BUFFERING
   ) {
-    stopTask1WatchTimer();
+    pauseTask1Timer();
   }
 
   if (event.data === YT.PlayerState.ENDED) {
-    stopTask1WatchTimer();
-    // END alone is not trusted — duration logic handles completion
+    stopTask1Timer();
+    completeTask1();
   }
 }
 
 
-    
+
+
+    function startTask1Timer() {
+  if (task1TimerInterval) return;
+
+  task1TimerInterval = setInterval(() => {
+    if (task1Remaining > 0) {
+      task1Remaining--;
+      updateTask1TimerUI();
+    }
+  }, 1000);
+}
+
+function pauseTask1Timer() {
+  if (task1TimerInterval) {
+    clearInterval(task1TimerInterval);
+    task1TimerInterval = null;
+  }
+}
+
+function stopTask1Timer() {
+  pauseTask1Timer();
+  task1Remaining = 0;
+  updateTask1TimerUI();
+}
+
+function updateTask1TimerUI() {
+  const el = document.getElementById("task1Timer");
+  if (!el) return;
+
+  const m = String(Math.floor(task1Remaining / 60)).padStart(2,"0");
+  const s = String(task1Remaining % 60).padStart(2,"0");
+  el.textContent = `⏱ ${m}:${s}`;
+}
+
+
+
+
+    function completeTask1() {
+  if (task1Done) return;
+
+  task1Done = true;
+
+  markTaskState(
+    task1CheckEl,
+    true,
+    "Video timer completed",
+    "Not completed"
+  );
+
+  updateClaimState();
+
+  console.log("[Task1] Timer finished");
+}
+
 
 function completeTask1FromVideo() {
   if (task1Done) return; // prevent double-run
@@ -1416,15 +1483,30 @@ async function connectFlow() {
   initTask1Player();
 }
 
+
+
+    function onTask1Ready() {
+  task1Duration = Math.floor(task1Player.getDuration());
+  task1Remaining = task1Duration;
+
+  updateTask1TimerUI();
+
+  console.log("[Task1] Duration:", task1Duration, "seconds");
+}
+
+
 function initTask1Player() {
   if (!ytReady || task1Player) return;
 
   task1Player = new YT.Player("task1Player", {
     playerVars: {
-      controls: 1,
-      disablekb: 1,
+      controls: 0,        // 🚫 hide controls
+      disablekb: 1,       // 🚫 disable keyboard
+      fs: 0,              // 🚫 fullscreen off
+      modestbranding: 1,
       rel: 0,
-      modestbranding: 1
+      iv_load_policy: 3,
+      playsinline: 1
     },
     events: {
       onReady: onTask1Ready,
@@ -1436,49 +1518,6 @@ function initTask1Player() {
 }
 
 
-    function onTask1Ready() {
-  task1Duration = task1Player.getDuration();
-  console.log("[Task1] Duration:", task1Duration, "seconds");
-}
-
-
-
-
-    function startTask1WatchTimer() {
-  if (task1WatchTimer) return;
-
-  task1WatchTimer = setInterval(() => {
-    if (!task1Player) return;
-
-    const currentTime = task1Player.getCurrentTime();
-
-    // Count only forward natural playback
-    if (currentTime > task1LastTime && currentTime - task1LastTime < 1.5) {
-      task1WatchedSeconds += (currentTime - task1LastTime);
-    }
-
-    task1LastTime = currentTime;
-
-    // Completion check (2s tolerance)
-    if (
-      task1Duration > 0 &&
-      task1WatchedSeconds >= task1Duration - 2
-    ) {
-      completeTask1FromVideo();
-      stopTask1WatchTimer();
-    }
-
-  }, 1000);
-}
-
-function stopTask1WatchTimer() {
-  if (task1WatchTimer) {
-    clearInterval(task1WatchTimer);
-    task1WatchTimer = null;
-  }
-}
-
-    
 
     
     function showRewardPage(){
