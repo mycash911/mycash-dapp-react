@@ -1470,8 +1470,7 @@ async function connectFlow() {
 
 
     
-    
-function initTask1Player() {
+ function initTask1Player() {
   if (!ytReady || task1Player) return;
 
   task1Player = new YT.Player("task1Player", {
@@ -1480,17 +1479,31 @@ function initTask1Player() {
       disablekb: 1,
       rel: 0,
       modestbranding: 1,
-      iv_load_policy: 3
+      iv_load_policy: 3,
+      playsinline: 1
     },
     events: {
+      onReady: onTask1PlayerReady,          // 🔥 ADD THIS
       onStateChange: onTask1PlayerStateChange
     }
   });
 
-  console.log("[Task1] Player ready");
+  console.log("[Task1] Player created");
 }
 
 
+function onTask1PlayerReady() {
+  console.log("[Task1] Player READY, starting video");
+
+  // Reset counters
+  task1WatchSeconds = 0;
+  task1Duration = Math.floor(task1Player.getDuration());
+
+  updateTask1TimerUI();
+
+  // 🔥 REQUIRED: start playback
+  task1Player.playVideo();
+}
 
 
     
