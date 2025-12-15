@@ -728,14 +728,14 @@
 
     // === YouTube Task 1 Player ===
 let task1Player = null;
+let task1Player = null;
+let ytReady = false;
 
+// Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
-  task1Player = new YT.Player("task1Player", {
-    events: {
-      onStateChange: onTask1PlayerStateChange
-    }
-  });
+  ytReady = true;
 };
+
 
 function onTask1PlayerStateChange(event) {
   if (event.data === YT.PlayerState.ENDED) {
@@ -1387,9 +1387,33 @@ async function connectFlow() {
 
     // === TASK LOGIC ===
     function showTaskPage(){
-      if(rewardPageEl) rewardPageEl.style.display = "none";
-      if(taskPageEl)   taskPageEl.style.display   = "block";
+  if(rewardPageEl) rewardPageEl.style.display = "none";
+  if(taskPageEl)   taskPageEl.style.display   = "block";
+
+  // 🔥 INIT YouTube player ONLY when visible
+  initTask1Player();
+}
+
+function initTask1Player() {
+  if (!ytReady) {
+    console.warn("YouTube API not ready yet");
+    return;
+  }
+
+  if (task1Player) {
+    return; // already created
+  }
+
+  task1Player = new YT.Player("task1Player", {
+    events: {
+      onStateChange: onTask1PlayerStateChange
     }
+  });
+
+  console.log("[Task1] YouTube player initialized");
+}
+
+    
     function showRewardPage(){
       if(taskPageEl)   taskPageEl.style.display   = "none";
       if(rewardPageEl) rewardPageEl.style.display = "block";
