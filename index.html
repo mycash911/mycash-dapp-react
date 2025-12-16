@@ -1,4 +1,4 @@
-<!doctype html>
+check my code, whice code breaking the design <!doctype html>
 <html> 
 <head>
   <meta charset="utf-8"/>
@@ -541,11 +541,12 @@
     }
 
     /* Reward layout responsive */
-   @media(max-width:768px){
-  .reward-center{
-    max-width:100%;
-  }
-}
+    @media(max-width:768px){
+      .reward-card{
+        flex-direction:column;
+        align-items:stretch;
+        text-align:center;
+      }
       .reward-left{
         align-items:center;
       }
@@ -659,8 +660,7 @@
           </div>
         </div>
         
-  <button id="connectBtnCard" class="connect">Connect Wallet</button>
-
+<button id="connectBtnCard" class="connect">Connect Wallet</button> 
         
 
       </div>
