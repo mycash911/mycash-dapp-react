@@ -1425,11 +1425,11 @@ let ytReady = false;
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
 
-  // Init players ONLY if task page is visible
-  if (taskPageEl && taskPageEl.style.display === "block") {
-    Object.keys(videoTasks).forEach(initVideoTask);
-    setTimeout(enableVideoClickToPlay, 100);
-  }
+  // 🔥 ALWAYS init players once API is ready
+  Object.keys(videoTasks).forEach(initVideoTask);
+
+  // enable click overlay after players exist
+  setTimeout(enableVideoClickToPlay, 100);
 };
 
 let task1WatchSeconds = 0;
@@ -2194,11 +2194,7 @@ function showTaskPage(){
   if(rewardPageEl) rewardPageEl.style.display = "none";
   if(taskPageEl)   taskPageEl.style.display   = "block";
 
-  // If YT already ready → init now
-  if (ytReady) {
-    Object.keys(videoTasks).forEach(initVideoTask);
-    setTimeout(enableVideoClickToPlay, 100);
-  }
+  
 }
 
 
