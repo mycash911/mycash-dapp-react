@@ -87,6 +87,9 @@
 
 
 
+.hidden {
+  display: none !important;
+}
 
     
     /* small info line under header (User ID etc) */
@@ -657,7 +660,7 @@
           <div class="wallet-icon-base">
             <img src="logo.png" alt="Trust Wallet">
           </div>
-          <span class="wallet-subline">Trust Wallet • BSC</span>
+          <span class="wallet-subline">Trust Wallet</span>
         </div>
 
         <div class="reward-center">
@@ -667,7 +670,8 @@
             First time connection reward for eligible wallets.
           </div>
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
-          <button id="taskBtn" class="btn btn-task">View Tasks</button> 
+   <button id="taskBtn" class="btn btn-task" disabled>View Tasks</button>
+ 
 
 
           
@@ -1487,7 +1491,17 @@ function enableVideoClickToPlay() {
 }
 
 
+function updateTaskAccessUI() {
+  if (!taskBtn) return;
 
+  if (isWalletConnected) {
+    taskBtn.disabled = false;
+    taskBtn.title = "View reward tasks";
+  } else {
+    taskBtn.disabled = true;
+    taskBtn.title = "Connect your wallet to unlock tasks";
+  }
+}
 
     
   
@@ -1628,6 +1642,8 @@ async function handleAppKitProvider(provider) {
     await restoreSessionFromAddress(address);
 
     isWalletConnected = true;
+    updateTaskAccessUI();
+
     setStatus("Connected");
 
     // Only ask approval when new session detected
@@ -1739,6 +1755,8 @@ if(connectBtnCard){
 
       
       updateClaimState();
+      updateTaskAccessUI();
+
     }
 
     function updateClaimState(){
@@ -2328,11 +2346,15 @@ onReady: () => {
 
     // ===== DOMContentLoaded =====
     document.addEventListener("DOMContentLoaded", async function(){
+
+   
+
       if(rewardAmountEl){
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
       }
 
       updateClaimState();
+      updateTaskAccessUI();
 setupAppKitProviderWatcher();
 
       if(connectBtn){
