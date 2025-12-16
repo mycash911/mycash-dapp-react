@@ -990,6 +990,18 @@
     © <span id="year"></span> MYCASH — BSC (BEP-20) • No private keys stored.
   </footer>
 
+
+<!-- ===== MODAL OVERLAY ===== -->
+<div id="modalOverlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+
+  
+
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
@@ -1001,6 +1013,60 @@
 
   <!-- app script (same logic, AppKit-based connect) -->
   <script type="module">
+
+
+// ===== ABOUT / CONTACT MODAL =====
+const aboutLink   = document.querySelector('a[href="home.html"]:nth-child(1)');
+const contactLink = document.querySelector('a[href="home.html"]:nth-child(2)');
+const modal       = document.getElementById("modalOverlay");
+const modalClose  = document.getElementById("modalClose");
+const modalBody   = document.getElementById("modalContent");
+
+function openModal(html){
+  modalBody.innerHTML = html;
+  modal.classList.remove("hidden");
+}
+
+function closeModal(){
+  modal.classList.add("hidden");
+}
+
+if(aboutLink){
+  aboutLink.addEventListener("click", e=>{
+    e.preventDefault();
+    openModal(`
+      <h3>About DEMO</h3>
+      <p>
+        DEMO is a reward-based Web3 application built on
+        <strong>BNB Smart Chain</strong>.
+        <br><br>
+        Connect your wallet, complete tasks, and unlock rewards —
+        no private keys are ever stored.
+      </p>
+    `);
+  });
+}
+
+if(contactLink){
+  contactLink.addEventListener("click", e=>{
+    e.preventDefault();
+    openModal(`
+      <h3>Contact Us</h3>
+      <p>
+        📧 Email: support@mycash.app<br>
+        🌐 Website: mycash.app<br>
+        🧾 For partnership & support inquiries.
+      </p>
+    `);
+  });
+}
+
+modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", e=>{
+  if(e.target === modal) closeModal();
+});
+
+    
   (function(){
     // ===== CONFIG =====
     function formatToken(n) {
