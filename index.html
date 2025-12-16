@@ -112,21 +112,19 @@
 
 
 /* ===== UPCOMING REWARD ===== */
-.reward-card.upcoming {
-  opacity: 0.55;
-  filter: grayscale(0.3);
-  pointer-events: none;
+.reward-lock-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 14px;
+  border-radius:999px;
+  font-size:0.8rem;
+  font-weight:600;
+  background:rgba(148,163,184,0.12);
+  border:1px solid rgba(148,163,184,0.5);
+  color:#e5e7eb;
 }
 
-.upcoming-badge {
-  background: rgba(59,130,246,0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(59,130,246,0.6);
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
 
 
 
@@ -246,7 +244,7 @@
 
     @media(max-width:480px){
   .google-play-btn img{
-    height:50px;
+    height:55px;
   }
 }
 
@@ -669,14 +667,18 @@
    </div>     
 
 
-<!-- ===== UPCOMING REWARD CARD ===== -->
-<div class="reward-card upcoming" style="margin-top:20px;">
+
+
+
+
+<!-- ===== UPCOMING REWARD #2 ===== -->
+<div class="reward-card" style="margin-top:22px;">
   <div class="reward-left">
     <div class="reward-tag">Reward #2</div>
     <div class="wallet-icon-base">
       <img src="logo.png" alt="Wallet">
     </div>
-    <span class="wallet-subline">BSC • Upcoming</span>
+    <span class="wallet-subline">Trust Wallet • BSC</span>
   </div>
 
   <div class="reward-center">
@@ -684,10 +686,12 @@
     <div class="reward-label">Level 2 Bonus</div>
 
     <div class="reward-desc">
-      Complete more tasks to unlock this reward.
+      Complete the next set of tasks to unlock this reward.
     </div>
 
-    <div class="upcoming-badge">🚧 Coming Soon</div>
+    <div class="reward-lock-badge">
+      🔒 Locked — Coming Soon
+    </div>
   </div>
 
   <div class="reward-right">
@@ -695,6 +699,66 @@
   </div>
 </div>
 
+
+
+<!-- ===== UPCOMING REWARD #3 ===== -->
+<div class="reward-card" style="margin-top:22px;">
+  <div class="reward-left">
+    <div class="reward-tag">Reward #3</div>
+    <div class="wallet-icon-base">
+      <img src="logo.png" alt="Wallet">
+    </div>
+    <span class="wallet-subline">Trust Wallet • BSC</span>
+  </div>
+
+  <div class="reward-center">
+    <div class="reward-amount">$50</div>
+    <div class="reward-label">Level 3 Bonus</div>
+
+    <div class="reward-desc">
+      Complete the next set of tasks to unlock this reward.
+    </div>
+
+    <div class="reward-lock-badge">
+      🔒 Locked — Coming Soon
+    </div>
+  </div>
+
+  <div class="reward-right">
+    <button class="btn btn-claim" disabled>Locked</button>
+  </div>
+</div>
+
+    
+
+
+    <!-- ===== UPCOMING REWARD #4 ===== -->
+<div class="reward-card" style="margin-top:22px;">
+  <div class="reward-left">
+    <div class="reward-tag">Reward #4</div>
+    <div class="wallet-icon-base">
+      <img src="logo.png" alt="Wallet">
+    </div>
+    <span class="wallet-subline">Trust Wallet • BSC</span>
+  </div>
+
+  <div class="reward-center">
+    <div class="reward-amount">$100</div>
+    <div class="reward-label">Level 4 Bonus</div>
+
+    <div class="reward-desc">
+      Complete the next set of tasks to unlock this reward.
+    </div>
+
+    <div class="reward-lock-badge">
+      🔒 Locked — Coming Soon
+    </div>
+  </div>
+
+  <div class="reward-right">
+    <button class="btn btn-claim" disabled>Locked</button>
+  </div>
+</div>
 
 
     
