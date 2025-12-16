@@ -642,6 +642,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task5Player"
       src="https://www.youtube.com/embed/BYfoO4sDqBo?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -674,6 +676,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task6Player"
       src="https://www.youtube.com/embed/Hz2F_S3Tl0Y?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -705,6 +709,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task7Player"
       src="https://www.youtube.com/embed/Ua3wlssr6rw?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -738,6 +744,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task8Player"
       src="https://www.youtube.com/embed/PjryN2F6fF0?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -769,6 +777,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task9Player"
       src="https://www.youtube.com/embed/JqflfjrcKjo?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -799,6 +809,8 @@
   <p>Watch this video to unlock the next reward step.</p>
 
   <div class="video-wrapper">
+    <div class="video-click-overlay"></div>
+
     <iframe
       id="task10Player"
       src="https://www.youtube.com/embed/YgdF8IUo-c0?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -1196,7 +1208,7 @@ function onVideoStateChange(task, event) {
     ?.closest(".video-wrapper")
     ?.querySelector(".video-click-overlay");
 
-  if (overlay) overlay.classList.add("hidden");
+ if (overlay) overlay.classList.remove("hidden");
 
 
 
