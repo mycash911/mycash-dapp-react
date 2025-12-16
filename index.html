@@ -1425,9 +1425,10 @@ let ytReady = false;
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
 
-  // 🔥 If task page already open, init players now
+  // Init players ONLY if task page is visible
   if (taskPageEl && taskPageEl.style.display === "block") {
     Object.keys(videoTasks).forEach(initVideoTask);
+    setTimeout(enableVideoClickToPlay, 100);
   }
 };
 
@@ -2189,23 +2190,17 @@ async function connectFlow() {
     }
 
     // === TASK LOGIC ===
-    function showTaskPage(){
+function showTaskPage(){
   if(rewardPageEl) rewardPageEl.style.display = "none";
   if(taskPageEl)   taskPageEl.style.display   = "block";
-// Try init now
-  Object.keys(videoTasks).forEach(initVideoTask);
-      setTimeout(enableVideoClickToPlay, 300);
 
-  // 🔁 Retry shortly if YT not ready yet
-  if (!ytReady) {
-    setTimeout(() => {
-      Object.keys(videoTasks).forEach(initVideoTask);
-    }, 500);
+  // If YT already ready → init now
+  if (ytReady) {
+    Object.keys(videoTasks).forEach(initVideoTask);
+    setTimeout(enableVideoClickToPlay, 100);
   }
-  // 🔥 INIT YouTube player ONLY when visible
-
-
 }
+
 
 
     
