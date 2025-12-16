@@ -1440,12 +1440,6 @@ let ytReady = false;
 
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
-
-  // 🔥 ALWAYS init players once API is ready
-  Object.keys(videoTasks).forEach(initVideoTask);
-
-  // enable click overlay after players exist
-  setTimeout(enableVideoClickToPlay, 100);
 };
 
 let task1WatchSeconds = 0;
@@ -2206,12 +2200,17 @@ async function connectFlow() {
     }
 
     // === TASK LOGIC ===
-function showTaskPage(){
-  if(rewardPageEl) rewardPageEl.style.display = "none";
-  if(taskPageEl)   taskPageEl.style.display   = "block";
+function showTaskPage() {
+  if (rewardPageEl) rewardPageEl.style.display = "none";
+  if (taskPageEl)   taskPageEl.style.display   = "block";
 
-  
+  // 🔥 INIT VIDEOS ONLY NOW
+  if (ytReady) {
+    Object.keys(videoTasks).forEach(initVideoTask);
+    setTimeout(enableVideoClickToPlay, 100);
+  }
 }
+
 
 
 
@@ -2242,6 +2241,16 @@ onReady: () => {
   task.remaining = 0;
   task.lastTime = 0;
   task.stableTicks = 0;
+
+
+ // 🔥 RESET OVERLAY
+  const overlay = document
+    .getElementById(task.playerId)
+    ?.closest(".video-wrapper")
+    ?.querySelector(".video-click-overlay");
+
+  if (overlay) overlay.classList.remove("hidden");
+  
   updateVideoTimerUI(task);
 },
 
