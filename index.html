@@ -1003,6 +1003,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+    remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1017,6 +1019,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+   remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1032,6 +1036,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+   remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1046,6 +1052,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+         remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1061,6 +1069,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+         remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1078,6 +1088,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+         remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1094,6 +1106,8 @@ let ytReady = false;
     player: null,
     watched: 0,
     duration: 0,
+         remaining: 0,
+
     interval: null,
     lastTime: 0,
     stableTicks: 0
@@ -1118,23 +1132,45 @@ let stableTicks = 0;
 const STABLE_REQUIRED = 3; // seconds of real playback
     
 
-
 function updateVideoTimerUI(task) {
   const textEl = document.getElementById(task.timerId);
   const ringEl = document.getElementById(task.ringId);
   if (!textEl || !ringEl) return;
 
-  const m = String(Math.floor(task.watched / 60)).padStart(2, "0");
-  const s = String(task.watched % 60).padStart(2, "0");
+  const m = String(Math.floor(task.remaining / 60)).padStart(2, "0");
+  const s = String(task.remaining % 60).padStart(2, "0");
   textEl.textContent = `${m}:${s}`;
 
   if (task.duration > 0) {
-    const progress = Math.min(task.watched / task.duration, 1);
+    const progress = 1 - (task.remaining / task.duration);
     ringEl.style.strokeDashoffset = 113 - progress * 113;
   }
 }
 
 
+function enableVideoClickToPlay() {
+  document.querySelectorAll(".video-wrapper").forEach(wrapper => {
+    wrapper.addEventListener("click", () => {
+      const iframe = wrapper.querySelector("iframe");
+      if (!iframe) return;
+
+      const taskKey = Object.keys(videoTasks).find(
+        k => videoTasks[k].playerId === iframe.id
+      );
+
+      if (!taskKey) return;
+
+      const task = videoTasks[taskKey];
+      if (task.player) {
+        task.player.playVideo(); // 🔥 THIS TRIGGERS PLAYING
+      }
+    });
+  });
+}
+
+
+
+    
   
 function onVideoStateChange(task, event) {
   if (!task.player) return;
@@ -1156,14 +1192,24 @@ function onVideoStateChange(task, event) {
 
         if (task.stableTicks < 3) return; // real playback only
 
-        task.watched = current;
-        if (duration > 0) task.duration = duration;
+// set duration once (after ads)
+if (duration > 0 && task.duration === 0) {
+  task.duration = duration;
+  task.remaining = duration;
+}
 
-        updateVideoTimerUI(task);
+// countdown
+task.remaining = Math.max(task.duration - current, 0);
 
-        if (task.duration && task.watched >= task.duration * 0.95) {
-          completeVideoTask(task);
-        }
+updateVideoTimerUI(task);
+
+// completed when countdown hits zero
+if (task.remaining <= 1) {
+  completeVideoTask(task);
+}
+
+
+    
       }, 1000);
     }
   }
@@ -1200,6 +1246,9 @@ function completeVideoTask(task) {
 
 
 
+
+
+    
 
 let appKitEip155Provider = null;
 
@@ -1830,6 +1879,7 @@ async function connectFlow() {
   if(taskPageEl)   taskPageEl.style.display   = "block";
 // Try init now
   Object.keys(videoTasks).forEach(initVideoTask);
+      setTimeout(enableVideoClickToPlay, 300);
 
   // 🔁 Retry shortly if YT not ready yet
   if (!ytReady) {
@@ -1838,13 +1888,7 @@ async function connectFlow() {
     }, 500);
   }
   // 🔥 INIT YouTube player ONLY when visible
-initVideoTask("task1");
-       initVideoTask("task5");
-             initVideoTask("task6");
-       initVideoTask("task7");
-       initVideoTask("task8");
-       initVideoTask("task9");
-       initVideoTask("task10");
+
 
 }
 
@@ -1868,13 +1912,19 @@ function initVideoTask(taskKey) {
       playsinline: 1
     },
     events: {
-      onReady: () => {
-        task.watched = 0;
-        task.duration = 0;
-        task.lastTime = 0;
-        task.stableTicks = 0;
-        updateVideoTimerUI(task);
-      },
+
+
+      
+onReady: () => {
+  task.duration = 0;
+  task.remaining = 0;
+  task.lastTime = 0;
+  task.stableTicks = 0;
+  updateVideoTimerUI(task);
+},
+
+
+      
       onStateChange: (e) => onVideoStateChange(task, e)
     }
   });
