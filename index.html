@@ -1202,73 +1202,60 @@ function enableVideoClickToPlay() {
 function onVideoStateChange(task, event) {
   if (!task.player) return;
 
- if (event.data === YT.PlayerState.PLAYING) {
+
+
+
+if (event.data === YT.PlayerState.PLAYING) {
   const overlay = document
     .getElementById(task.playerId)
     ?.closest(".video-wrapper")
     ?.querySelector(".video-click-overlay");
 
- if (overlay) overlay.classList.remove("hidden");
+  // 🔥 HIDE overlay so iframe receives clicks
+  if (overlay) overlay.classList.add("hidden");
 
+  if (!task.interval) {
+    task.interval = setInterval(() => {
+      const current = Math.floor(task.player.getCurrentTime());
+      const duration = Math.floor(task.player.getDuration());
 
+      if (current <= task.lastTime || current === 0) {
+        task.stableTicks = 0;
+        return;
+      }
 
-    
-    if (!task.interval) {
-      task.interval = setInterval(() => {
-        const current = Math.floor(task.player.getCurrentTime());
-        const duration = Math.floor(task.player.getDuration());
+      task.stableTicks++;
+      task.lastTime = current;
+      if (task.stableTicks < 3) return;
 
-        // Ads / buffering
-        if (current <= task.lastTime || current === 0) {
-          task.stableTicks = 0;
-          return;
-        }
+      if (duration > 0 && task.duration === 0) {
+        task.duration = duration;
+        task.remaining = duration;
+      }
 
-        task.stableTicks++;
-        task.lastTime = current;
+      task.remaining = Math.max(task.duration - current, 0);
+      updateVideoTimerUI(task);
 
-        if (task.stableTicks < 3) return; // real playback only
-
-// set duration once (after ads)
-if (duration > 0 && task.duration === 0) {
-  task.duration = duration;
-  task.remaining = duration;
-}
-
-// countdown
-task.remaining = Math.max(task.duration - current, 0);
-
-updateVideoTimerUI(task);
-
-// completed when countdown hits zero
-if (task.remaining <= 1) {
-  completeVideoTask(task);
-}
-
-
-    
-      }, 1000);
-    }
+      if (task.remaining <= 1) {
+        completeVideoTask(task);
+      }
+    }, 1000);
   }
+}
 
-  if (
-    event.data === YT.PlayerState.PAUSED ||
-    event.data === YT.PlayerState.BUFFERING 
-  ) {  
 
-const overlay = document
-    .getElementById(task.playerId)
-    ?.closest(".video-wrapper")
-    ?.querySelector(".video-click-overlay");
 
-  if (overlay) overlay.classList.remove("hidden");
   
 
+ if (
+  event.data === YT.PlayerState.PAUSED ||
+  event.data === YT.PlayerState.BUFFERING
+) {
+  clearInterval(task.interval);
+  task.interval = null;
+  task.stableTicks = 0;
+}
 
-    clearInterval(task.interval);
-    task.interval = null;
-    task.stableTicks = 0;
-  }
 }
 
 
@@ -1975,6 +1962,8 @@ onReady: () => {
       onStateChange: (e) => onVideoStateChange(task, e)
     }
   });
+  setTimeout(enableVideoClickToPlay, 0);
+
 }
 
 
