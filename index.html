@@ -1,6 +1,3 @@
-timer+ fix 
-
-
 <!doctype html>
 <html> 
 <head>
@@ -113,6 +110,27 @@ timer+ fix
       background:radial-gradient(circle at top left,#111827,#020617);
     }
 
+
+/* ===== UPCOMING REWARD ===== */
+.reward-card.upcoming {
+  opacity: 0.55;
+  filter: grayscale(0.3);
+  pointer-events: none;
+}
+
+.upcoming-badge {
+  background: rgba(59,130,246,0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59,130,246,0.6);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+
+
+    
     .reward-left,
     .reward-center,
     .reward-right{
@@ -649,6 +667,34 @@ timer+ fix
 
       </div>
    </div>     
+
+
+<!-- ===== UPCOMING REWARD CARD ===== -->
+<div class="reward-card upcoming" style="margin-top:20px;">
+  <div class="reward-left">
+    <div class="reward-tag">Reward #2</div>
+    <div class="wallet-icon-base">
+      <img src="logo.png" alt="Wallet">
+    </div>
+    <span class="wallet-subline">BSC • Upcoming</span>
+  </div>
+
+  <div class="reward-center">
+    <div class="reward-amount">$25</div>
+    <div class="reward-label">Level 2 Bonus</div>
+
+    <div class="reward-desc">
+      Complete more tasks to unlock this reward.
+    </div>
+
+    <div class="upcoming-badge">🚧 Coming Soon</div>
+  </div>
+
+  <div class="reward-right">
+    <button class="btn btn-claim" disabled>Locked</button>
+  </div>
+</div>
+
 
 
     
