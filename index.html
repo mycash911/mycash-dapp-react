@@ -335,6 +335,13 @@
       border:0;
     }
 
+.video-click-overlay{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  cursor:pointer;
+  background:transparent;
+}
 
 
 .video-timer{
@@ -581,7 +588,8 @@
           Watch this video to understand how MYCASH and the reward system works.
         </p>
         <div class="video-wrapper">
-          <!-- Replace src with your own embedded video later -->
+    <div class="video-click-overlay"></div>
+      <!-- Replace src with your own embedded video later -->
 <iframe
   id="task1Player"
   src="https://www.youtube.com/embed/lqvH1bs8mJc?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
@@ -1149,24 +1157,25 @@ function updateVideoTimerUI(task) {
 
 
 function enableVideoClickToPlay() {
-  document.querySelectorAll(".video-wrapper").forEach(wrapper => {
-    wrapper.addEventListener("click", () => {
+  document.querySelectorAll(".video-click-overlay").forEach(overlay => {
+    overlay.addEventListener("click", () => {
+      const wrapper = overlay.closest(".video-wrapper");
       const iframe = wrapper.querySelector("iframe");
       if (!iframe) return;
 
       const taskKey = Object.keys(videoTasks).find(
         k => videoTasks[k].playerId === iframe.id
       );
-
       if (!taskKey) return;
 
       const task = videoTasks[taskKey];
       if (task.player) {
-        task.player.playVideo(); // 🔥 THIS TRIGGERS PLAYING
+        task.player.playVideo(); // ✅ NOW THIS RUNS
       }
     });
   });
 }
+
 
 
 
