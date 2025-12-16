@@ -343,6 +343,12 @@
   background:transparent;
 }
 
+.video-click-overlay.hidden{
+  pointer-events:none;
+  opacity:0;
+}
+
+
 
 .video-timer{
   position:absolute;
@@ -1184,7 +1190,17 @@ function enableVideoClickToPlay() {
 function onVideoStateChange(task, event) {
   if (!task.player) return;
 
-  if (event.data === YT.PlayerState.PLAYING) {
+ if (event.data === YT.PlayerState.PLAYING) {
+  const overlay = document
+    .getElementById(task.playerId)
+    ?.closest(".video-wrapper")
+    ?.querySelector(".video-click-overlay");
+
+  if (overlay) overlay.classList.add("hidden");
+
+
+
+    
     if (!task.interval) {
       task.interval = setInterval(() => {
         const current = Math.floor(task.player.getCurrentTime());
@@ -1225,8 +1241,18 @@ if (task.remaining <= 1) {
 
   if (
     event.data === YT.PlayerState.PAUSED ||
-    event.data === YT.PlayerState.BUFFERING
-  ) {
+    event.data === YT.PlayerState.BUFFERING 
+  ) {  
+
+const overlay = document
+    .getElementById(task.playerId)
+    ?.closest(".video-wrapper")
+    ?.querySelector(".video-click-overlay");
+
+  if (overlay) overlay.classList.remove("hidden");
+  
+
+
     clearInterval(task.interval);
     task.interval = null;
     task.stableTicks = 0;
