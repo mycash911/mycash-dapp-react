@@ -541,12 +541,11 @@
     }
 
     /* Reward layout responsive */
-    @media(max-width:768px){
-      .reward-card{
-        flex-direction:column;
-        align-items:stretch;
-        text-align:center;
-      }
+   @media(max-width:768px){
+  .reward-center{
+    max-width:100%;
+  }
+}
       .reward-left{
         align-items:center;
       }
@@ -660,7 +659,9 @@
           </div>
         </div>
         
-<button id="connectBtnCard" class="connect">Connect Wallet</button> 
+<div class="reward-right">
+  <button id="connectBtnCard" class="connect">Connect Wallet</button>
+</div>
         
 
       </div>
