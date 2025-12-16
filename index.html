@@ -2204,11 +2204,23 @@ function showTaskPage() {
   if (rewardPageEl) rewardPageEl.style.display = "none";
   if (taskPageEl)   taskPageEl.style.display   = "block";
 
-  // 🔥 INIT VIDEOS ONLY NOW
-  if (ytReady) {
-    Object.keys(videoTasks).forEach(initVideoTask);
-    setTimeout(enableVideoClickToPlay, 100);
-  }
+  if (!ytReady) return;
+
+  Object.keys(videoTasks).forEach(initVideoTask);
+
+  // 🔥 FORCE YOUTUBE RESIZE AFTER DISPLAY
+  setTimeout(() => {
+    Object.values(videoTasks).forEach(task => {
+      if (task.player && task.player.setSize) {
+        task.player.setSize(
+          task.player.getIframe().offsetWidth,
+          task.player.getIframe().offsetHeight
+        );
+      }
+    });
+
+    enableVideoClickToPlay();
+  }, 200);
 }
 
 
