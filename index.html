@@ -338,7 +338,7 @@
 .video-click-overlay{
   position:absolute;
   inset:0;
-  z-index:5;
+  z-index:4;
   cursor:pointer;
   background:transparent;
 }
@@ -367,12 +367,14 @@
 
 .video-progress{
   position:absolute;
-  top:6px;        /* closer to corner */
-  right:6px;      /* closer to corner */
-  width:45px;     /* slightly smaller = cleaner */
-  height:45px;
-  z-index:6;     /* always above video */
-   
+  background:rgba(2,6,23,0.6);
+  border-radius:999px;
+  padding:2px;
+  top:10px;
+  right:10px;
+  width:44px;
+  height:44px;
+  z-index:5;
 }
 
 
