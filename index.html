@@ -506,9 +506,9 @@
     <div class="nav">
       <div class="logo">DEMO</div>
       <div class="nav-right">
-        <a href="home.html">Wallet</a>
-        <a href="home.html">Task</a>
-        <a href="hold-earn.html">Earn</a>
+        <a href="home.html">About</a>
+        <a href="home.html">Contact</a>
+      
         <button id="connectBtn" class="connect">Connect Wallet</button>
       </div>
     </div>
@@ -584,7 +584,7 @@
           <!-- Replace src with your own embedded video later -->
 <iframe
   id="task1Player"
-  src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
+  src="https://www.youtube.com/embed/lqvH1bs8mJc?enablejsapi=1&controls=0&disablekb=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1"
   title="MYCASH Intro"
   allow="autoplay; encrypted-media"
   allowfullscreen>
@@ -795,7 +795,7 @@
     <div class="video-progress">
       <svg class="progress-ring" width="44" height="44">
         <circle class="ring-bg" cx="22" cy="22" r="18"></circle>
-        <circle id="task6Ring" class="ring-progress" cx="22" cy="22" r="18"></circle>
+        <circle id="task10Ring" class="ring-progress" cx="22" cy="22" r="18"></circle>
       </svg>
       <div id="task10Timer" class="ring-text">00:00</div>
     </div>
@@ -810,31 +810,12 @@
 
 
       
-      <!-- Task 2: wallet balance checker -->
-      <div class="task-section">
-        <h3>Task 2 — Wallet Balance Check</h3>
-        <p>
-          This task checks if your connected wallet holds at least
-          <strong>10 USDT (BEP-20)</strong>. 
-        </p>
-        <ul>
-          <li>Connect your BSC wallet using the button in the header.</li>
-          <li>Make sure you hold at least 10 USDT at the token address configured.</li>
-          <li>Click “Check wallet” to test eligibility.</li>
-        </ul>
-        <div class="task-actions">
-          <button id="task2CheckBtn" class="task-btn">Check wallet (demo)</button>
-          <span id="task2Check" class="task-check bad">❌ Not checked</span>
-        </div>
-        <p class="small" id="task2Detail" style="margin-top:4px;">
-          Status: waiting for check.
-        </p>
-      </div>
+     
 
       <!-- Task 3: custom action -->
           <!-- Task 3: Bubble Shooter -->
 <div class="task-section">
-  <h3>Task 3 — Play Bubble Shooter (15 minutes)</h3>
+  <h3>New Task — Play Bubble Shooter (15 minutes)</h3>
 
   <!-- Play Store preview -->
   <div style="display:flex;gap:14px;align-items:center;margin-top:8px;">
@@ -883,7 +864,7 @@
 
 
       <div class="task-section">
-  <h3>Task 4 — Play Block Blast (15 minutes)</h3>
+  <h3>New Task — Play Block Blast (15 minutes)</h3>
 
   <div style="display:flex;gap:14px;align-items:center;margin-top:8px;">
     <img
@@ -922,7 +903,6 @@
       Coming Soon..
     </button>
 
-    <span id="task4Check" class="task-check bad">❌ Not completed</span>
   </div>
 
 </div>
@@ -1121,12 +1101,14 @@ let ytReady = false;
    
 };
 
-
-// Called by YouTube API
 window.onYouTubeIframeAPIReady = function () {
   ytReady = true;
-};
 
+  // 🔥 If task page already open, init players now
+  if (taskPageEl && taskPageEl.style.display === "block") {
+    Object.keys(videoTasks).forEach(initVideoTask);
+  }
+};
 
 let task1WatchSeconds = 0;
 let task1Duration = 0;
@@ -1846,7 +1828,15 @@ async function connectFlow() {
     function showTaskPage(){
   if(rewardPageEl) rewardPageEl.style.display = "none";
   if(taskPageEl)   taskPageEl.style.display   = "block";
+// Try init now
+  Object.keys(videoTasks).forEach(initVideoTask);
 
+  // 🔁 Retry shortly if YT not ready yet
+  if (!ytReady) {
+    setTimeout(() => {
+      Object.keys(videoTasks).forEach(initVideoTask);
+    }, 500);
+  }
   // 🔥 INIT YouTube player ONLY when visible
 initVideoTask("task1");
        initVideoTask("task5");
@@ -1889,16 +1879,6 @@ function initVideoTask(taskKey) {
     }
   });
 }
-
-function onTask1PlayerReady() {
-  task1WatchSeconds = 0;
-  task1Duration = 0;
-  lastVideoTime = 0;
-  stableTicks = 0;
-
-  updateTask1TimerUI();
-}
-
 
 
     
