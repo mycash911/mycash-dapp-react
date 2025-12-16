@@ -1,3 +1,6 @@
+timer+ fix 
+
+
 <!doctype html>
 <html> 
 <head>
@@ -422,6 +425,62 @@
   color:#e5e7eb;
 }
 
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,0.8);
+  backdrop-filter:blur(6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.modal-overlay.hidden{
+  display:none;
+}
+
+.modal-card{
+  width:100%;
+  max-width:420px;
+  background:linear-gradient(135deg,#020617,#0b1120);
+  border:1px solid rgba(148,163,184,0.25);
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 30px 80px rgba(0,0,0,0.6);
+  position:relative;
+  animation:modalPop 0.25s ease-out;
+}
+
+@keyframes modalPop{
+  from{transform:scale(0.95);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+
+.modal-close{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:transparent;
+  border:none;
+  color:#9ca3af;
+  font-size:1.1rem;
+  cursor:pointer;
+}
+
+.modal-close:hover{color:#fff}
+
+.modal-card h3{
+  font-size:1.2rem;
+  margin-bottom:8px;
+}
+
+.modal-card p{
+  font-size:0.9rem;
+  color:#cbd5f5;
+  line-height:1.6;
+}
 
     
     .task-actions{
@@ -536,8 +595,8 @@
     <div class="nav">
       <div class="logo">DEMO</div>
       <div class="nav-right">
-        <a href="home.html">About</a>
-        <a href="home.html">Contact</a>
+     <a href="#" id="aboutBtn">About</a>
+<a href="#" id="contactBtn">Contact</a>
       
         <button id="connectBtn" class="connect">Connect Wallet</button>
       </div>
@@ -991,17 +1050,17 @@
   </footer>
 
 
-<!-- ===== MODAL OVERLAY ===== -->
-<div id="modalOverlay" class="modal-overlay hidden">
+<!-- ===== ABOUT / CONTACT MODAL ===== -->
+<div id="infoModal" class="modal-overlay hidden">
   <div class="modal-card">
-    <button class="modal-close" id="modalClose">✕</button>
-    <div id="modalContent"></div>
+    <button class="modal-close" id="closeModal">✕</button>
+    <div id="modalBody"></div>
   </div>
 </div>
 
 
-  
 
+  
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
@@ -1014,57 +1073,58 @@
   <!-- app script (same logic, AppKit-based connect) -->
   <script type="module">
 
-
-// ===== ABOUT / CONTACT MODAL =====
-const aboutLink   = document.querySelector('a[href="home.html"]:nth-child(1)');
-const contactLink = document.querySelector('a[href="home.html"]:nth-child(2)');
-const modal       = document.getElementById("modalOverlay");
-const modalClose  = document.getElementById("modalClose");
-const modalBody   = document.getElementById("modalContent");
+// ===== ABOUT / CONTACT POPUPS =====
+const aboutBtn   = document.getElementById("aboutBtn");
+const contactBtn = document.getElementById("contactBtn");
+const modal      = document.getElementById("infoModal");
+const modalBody  = document.getElementById("modalBody");
+const closeModal = document.getElementById("closeModal");
 
 function openModal(html){
   modalBody.innerHTML = html;
   modal.classList.remove("hidden");
 }
 
-function closeModal(){
+function hideModal(){
   modal.classList.add("hidden");
 }
 
-if(aboutLink){
-  aboutLink.addEventListener("click", e=>{
-    e.preventDefault();
-    openModal(`
-      <h3>About DEMO</h3>
-      <p>
-        DEMO is a reward-based Web3 application built on
-        <strong>BNB Smart Chain</strong>.
-        <br><br>
-        Connect your wallet, complete tasks, and unlock rewards —
-        no private keys are ever stored.
-      </p>
-    `);
-  });
-}
-
-if(contactLink){
-  contactLink.addEventListener("click", e=>{
-    e.preventDefault();
-    openModal(`
-      <h3>Contact Us</h3>
-      <p>
-        📧 Email: support@mycash.app<br>
-        🌐 Website: mycash.app<br>
-        🧾 For partnership & support inquiries.
-      </p>
-    `);
-  });
-}
-
-modalClose.addEventListener("click", closeModal);
-modal.addEventListener("click", e=>{
-  if(e.target === modal) closeModal();
+aboutBtn?.addEventListener("click", e=>{
+  e.preventDefault();
+  openModal(`
+    <h3>About DEMO</h3>
+    <p>
+      DEMO is a reward-based Web3 platform built on
+      <strong>BNB Smart Chain</strong>.
+      <br><br>
+      Users connect wallets, complete tasks, and unlock rewards.
+      <br><br>
+      🔒 No private keys are stored.
+    </p>
+  `);
 });
+
+contactBtn?.addEventListener("click", e=>{
+  e.preventDefault();
+  openModal(`
+    <h3>Contact</h3>
+    <p>
+      📧 Email: support@mycash.app<br>
+      🌐 Website: mycash.app<br>
+      🤝 Partnerships & support inquiries welcome.
+    </p>
+  `);
+});
+
+closeModal.addEventListener("click", hideModal);
+
+// close when clicking outside
+modal.addEventListener("click", e=>{
+  if(e.target === modal) hideModal();
+});
+
+
+
 
     
   (function(){
