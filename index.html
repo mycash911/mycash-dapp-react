@@ -11,10 +11,28 @@
       font-family:system-ui,Segoe UI,Arial;
       background:#050816;
       color:#e6eef8;
-      min-height:100vh;
       display:flex;
       flex-direction:column;
     }
+
+    html, body {
+  height: 100%;
+}
+
+body {
+  min-height: 100svh; /* Samsung / modern fix */
+}
+
+
+@media (max-width: 768px) {
+  header {
+    position: sticky;
+    top: 0;
+    will-change: transform;
+  }
+}
+
+    
 
     /* === HEADER & NAV (same structure as index) === */
     header{
