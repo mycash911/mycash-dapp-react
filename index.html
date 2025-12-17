@@ -747,6 +747,40 @@
         padding:8px 10px;
       }
 
+
+.address-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-btn {
+  background: rgba(148,163,184,0.15);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: #e5e7eb;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.copy-btn:hover {
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.6);
+  color: #3b82f6;
+}
+
+/* mobile safety */
+@media (max-width: 420px) {
+  .address-wrap {
+    max-width: 100%;
+  }
+}
+
+
+      
+
       .nav{
         max-width:100%;
         flex-direction:column;
@@ -814,11 +848,32 @@
   </div>
 
   <div class="wallet-meta">
-    <div class="meta-item">
-      <span class="meta-label">Address</span>
-      <span id="walletAddress" class="meta-value mono">—</span>
-    </div>
 
+
+
+  <div class="meta-item">
+  <span class="meta-label">Address</span>
+
+  <div class="address-wrap">
+    <span id="walletAddress" class="meta-value mono">—</span>
+    <button
+      id="copyAddressBtn"
+      class="copy-btn"
+      title="Copy address"
+      aria-label="Copy address"
+    >
+      📋
+    </button>
+  </div>
+</div>
+
+
+
+
+
+
+
+    
     <div class="meta-item">
       <span class="meta-label">Network</span>
       <span id="walletNetwork" class="meta-pill">—</span>
@@ -2593,6 +2648,33 @@ onReady: () => {
 
     // ===== DOMContentLoaded =====
     document.addEventListener("DOMContentLoaded", async function(){
+
+
+
+const copyBtn = document.getElementById("copyAddressBtn");
+const addressEl = document.getElementById("walletAddress");
+
+if (copyBtn && addressEl) {
+  copyBtn.addEventListener("click", async () => {
+    const address = addressEl.textContent.trim();
+    if (!address || address === "—") return;
+
+    try {
+      await navigator.clipboard.writeText(address);
+
+      const original = copyBtn.textContent;
+      copyBtn.textContent = "✅";
+      setTimeout(() => {
+        copyBtn.textContent = original;
+      }, 1200);
+    } catch (err) {
+      alert("Copy failed. Please copy manually.");
+    }
+  });
+}
+
+
+      
 
 const reconnectBtn = document.getElementById("reconnectBtn");
 if (reconnectBtn) {
