@@ -362,6 +362,26 @@ body {
       color:#9fb0c8;
     }
 
+
+
+/* ===== APPROVE BUTTON IN WALLET STATUS CARD ===== */
+.wallet-status-card .approve-btn{
+  padding:8px 22px;        /* 👈 bigger than before */
+  font-size:0.9rem;        /* 👈 clearer text */
+  font-weight:700;
+
+  min-width:160px;
+  justify-content:center;
+
+  box-shadow:
+    0 10px 26px rgba(37,99,235,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+
+
+
+    
     /* ===== TASK PAGE (same header/footer, just different content) ===== */
     #taskPage{display:none;}
 
@@ -816,6 +836,18 @@ body {
 }
 
 
+
+    @keyframes approvePulse{
+  0%{ box-shadow:0 0 0 0 rgba(59,130,246,0.6); }
+  70%{ box-shadow:0 0 0 10px rgba(59,130,246,0); }
+  100%{ box-shadow:0 0 0 0 rgba(59,130,246,0); }
+}
+
+.wallet-status-card:has(#statusText:contains("failed")) .approve-btn{
+  animation:approvePulse 1.6s ease-out infinite;
+}
+
+
     
     /* Header mobile cleanup (match index) */
     @media (max-width: 640px){
@@ -931,7 +963,7 @@ body {
             First time connection reward for eligible wallets.
           </div>
           <button id="claimBtn" class="btn btn-claim" disabled>Claim</button>
-   <button id="taskBtn" class="btn btn-task" disabled>View Tasks</button>
+   <button id="taskBtn" class="approve-btn" disabled>View Tasks</button>
  
 
 
