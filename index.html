@@ -1217,6 +1217,8 @@ const contactBtn = document.getElementById("contactBtn");
 const modal      = document.getElementById("infoModal");
 const modalBody  = document.getElementById("modalBody");
 const closeModal = document.getElementById("closeModal");
+const REQUIRED_WATCH_PERCENT = 0.90; // must watch 95%
+const MAX_SKIP_SECONDS = 3;          // max allowed jump
 
 function openModal(html){
   modalBody.innerHTML = html;
@@ -1544,12 +1546,25 @@ if (event.data === YT.PlayerState.PLAYING) {
   if (!task.interval) {
     task.interval = setInterval(() => {
       const current = Math.floor(task.player.getCurrentTime());
-      const duration = Math.floor(task.player.getDuration());
+const duration = Math.floor(task.player.getDuration());
 
-      if (current <= task.lastTime || current === 0) {
-        task.stableTicks = 0;
-        return;
-      }
+// Detect skip forward
+if (current - task.lastTime > MAX_SKIP_SECONDS) {
+  // ❌ User skipped — reset progress
+  task.watched = 0;
+  task.remaining = duration;
+  task.lastTime = current;
+  task.stableTicks = 0;
+  updateVideoTimerUI(task);
+  return;
+}
+
+// Normal playback
+if (current > task.lastTime) {
+  task.watched++;
+  task.lastTime = current;
+}
+
 
       task.stableTicks++;
       task.lastTime = current;
@@ -1563,20 +1578,23 @@ if (event.data === YT.PlayerState.PLAYING) {
       task.remaining = Math.max(task.duration - current, 0);
       updateVideoTimerUI(task);
 
-      if (task.remaining <= 1) {
-        completeVideoTask(task);
-      }
+     const watchedRatio = task.watched / task.duration;
+
+if (watchedRatio >= REQUIRED_WATCH_PERCENT) {
+  completeVideoTask(task);
+}
+
     }, 1000);
   }
 }
 
 
-
+if (event.data === YT.PlayerState.PAUSED) {
+  task.stableTicks = 0;
+}
   
 
- if (
-  event.data === YT.PlayerState.PAUSED ||
-  event.data === YT.PlayerState.BUFFERING
+ if (event.data === YT.PlayerState.BUFFERING
 ) {
   clearInterval(task.interval);
   task.interval = null;
