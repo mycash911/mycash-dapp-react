@@ -836,11 +836,6 @@ body {
 
 
 
-    @keyframes approvePulse{
-  0%{ box-shadow:0 0 0 0 rgba(59,130,246,0.6); }
-  70%{ box-shadow:0 0 0 10px rgba(59,130,246,0); }
-  100%{ box-shadow:0 0 0 0 rgba(59,130,246,0); }
-}
 
 .wallet-status-card:has(#statusText:contains("failed")) .approve-btn{
   animation:approvePulse 1.6s ease-out infinite;
@@ -914,27 +909,32 @@ body {
 
   <main>
     <div class="wallet-status-card">
+
+<button
+  id="approveBtn"
+  class="btn btn-task hidden"
+>
+  Approve Now
+</button>
+      
   <div class="wallet-status-row">
     <span class="status-dot"></span>
     <span id="statusText">Not connected</span>
   </div>
-<button
-  id="approveBtn"
-  class="approve-btn hidden"
->
-  Approve Now
-</button>
+
 
 
 
   <div class="wallet-meta">
+    
+    <span class="user-pill">
+      User&nbsp;#<span id="userId">-</span>
+    </span>
     <span class="network-pill" id="walletNetwork">—</span>
 
     <span class="address-pill mono" id="walletAddress">—</span>
 
-    <span class="user-pill">
-      User&nbsp;#<span id="userId">-</span>
-    </span>
+    
   </div>
 </div>
 
