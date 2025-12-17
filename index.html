@@ -342,6 +342,40 @@
       background:#111827;
     }
 
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.65);
+}
+
+.center-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+  margin-top: 8px;
+}
+
+.center-text {
+  text-align: center;
+}
+
+
+
+
+    
     .task-section{
       margin-top:18px;
       padding:1rem 1.1rem;
@@ -793,13 +827,16 @@
 
     <!-- === TASK PAGE VIEW (same header/footer, different content) === -->
     <div id="taskPage">
-      <div class="task-header-row">
-        <div>
-          <h2 align="centre">Reward Tasks</h2>
-          <p class="small">❌ Do not skip video to the end</p>
-        </div>
-        <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
-      </div>
+     <div class="center-box">
+  <button id="backToRewardsBtn" class="btn-primary">
+    ← Back to Reward
+  </button>
+</div>
+
+<div class="center-text">
+  <h2>Reward Tasks</h2>
+  <p class="small">❌ Do not skip video to the end</p>
+</div>
 
       <!-- Task 1: video -->
       <div class="task-section">
@@ -1168,9 +1205,12 @@
     >
   </a>
 
-    <button id="task4DoneBtn" class="task-btn" disabled>
-      Coming Soon..
-    </button>
+   <div class="center-box" style="margin-top: 26px;">
+  <button class="btn-primary backToRewardsBtn">
+    ← Back to Reward
+  </button>
+</div>
+
 
   </div>
      
@@ -1178,7 +1218,6 @@
 </div>
 
 
-   <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
       
     </div>
   </main>
@@ -2425,9 +2464,14 @@ if (connectBtnCard) {
       if(taskBtn){
         taskBtn.addEventListener("click", showTaskPage);
       }
-      if(backToRewardsBtn){
-        backToRewardsBtn.addEventListener("click", showRewardPage);
-      }
+
+      
+     document
+  .querySelectorAll("#backToRewardsBtn, .backToRewardsBtn")
+  .forEach(btn => {
+    btn.addEventListener("click", showRewardPage);
+  });
+
 
       
 
