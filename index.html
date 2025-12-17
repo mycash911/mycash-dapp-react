@@ -607,6 +607,20 @@ body {
   align-items:center;
 }
 
+
+
+    /* ===== APPROVAL MODAL ACTIONS ===== */
+
+
+.approval-actions{
+  margin-top:18px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:12px;
+}
+
+
 /* Pills */
 .network-pill{
   background:rgba(59,130,246,0.15);
@@ -1438,11 +1452,14 @@ body {
     .
     </p>
 
-    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-      <button id="modalApproveBtn" class="btn btn-task">
-        Approve Now
-      </button>
-    </div>
+    <div class="approval-actions">
+  <button id="modalApproveBtn" class="approve-btn">
+    Approve Now
+  </button>
+</div>
+
+
+    
   </div>
 </div>
 
