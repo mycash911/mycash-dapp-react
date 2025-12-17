@@ -267,42 +267,36 @@
   }
 }
 
-@media (max-width: 420px) {
-  .status-row {
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.65);
+}
 
-    .meta-value.mono {
-  max-width: 170px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.center-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+  margin-top: 8px;
+}
+
+.center-text {
+  text-align: center;
 }
 
     
-@media (max-width: 768px) {
-  .reward-right {
-    width: 100%;
-  }
-  .reward-right .connect {
-    width: 100%;
-    max-width: 260px;
-  }
-}
-
-
-    @media (max-width: 480px) {
-  .center-text h2 {
-    font-size: 1.25rem;
-  }
-  .center-text .small {
-    font-size: 0.8rem;
-  }
-}
 
     .btn-claim{
       background:#22c55e;
@@ -376,40 +370,6 @@
       background:#111827;
     }
 
-
-.btn-primary {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 22px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.65);
-}
-
-.center-box {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 14px;
-  margin-top: 8px;
-}
-
-.center-text {
-  text-align: center;
-}
-
-
-
-
-    
     .task-section{
       margin-top:18px;
       padding:1rem 1.1rem;
@@ -618,96 +578,6 @@
       color:#f97316;
     }
 
-
-
-.wallet-status-card {
-  background: linear-gradient(135deg, #020617, #0b1120);
-  border: 1px solid rgba(148,163,184,0.25);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
-  box-shadow: 0 20px 45px rgba(15,23,42,0.85);
-}
-
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.status-badge {
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.status-badge.connected {
-  background: rgba(34,197,94,0.15);
-  color: #22c55e;
-  border: 1px solid rgba(34,197,94,0.6);
-}
-
-.status-badge.error {
-  background: rgba(248,113,113,0.15);
-  color: #f87171;
-  border: 1px solid rgba(248,113,113,0.6);
-}
-
-.status-badge.disconnected {
-  background: rgba(148,163,184,0.15);
-  color: #9ca3af;
-  border: 1px solid rgba(148,163,184,0.4);
-}
-
-.reconnect-btn {
-  background: transparent;
-  border: 1px solid rgba(59,130,246,0.7);
-  color: #3b82f6;
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.reconnect-btn:hover {
-  background: rgba(59,130,246,0.12);
-}
-
-.wallet-meta {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.meta-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.meta-label {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.meta-value {
-  font-size: 0.82rem;
-}
-
-.meta-pill {
-  background: rgba(148,163,184,0.15);
-  border: 1px solid rgba(148,163,184,0.4);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-}
-
-
-
-
-    
     footer{
       max-width:980px;
       margin:24px auto 16px auto;
@@ -746,40 +616,6 @@
       header{
         padding:8px 10px;
       }
-
-
-.address-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.copy-btn {
-  background: rgba(148,163,184,0.15);
-  border: 1px solid rgba(148,163,184,0.4);
-  color: #e5e7eb;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.copy-btn:hover {
-  background: rgba(59,130,246,0.15);
-  border-color: rgba(59,130,246,0.6);
-  color: #3b82f6;
-}
-
-/* mobile safety */
-@media (max-width: 420px) {
-  .address-wrap {
-    max-width: 100%;
-  }
-}
-
-
-      
 
       .nav{
         max-width:100%;
@@ -841,51 +677,12 @@
 
   <main>
     <!-- Top info bar (User ID, address, etc.) -->
- <div class="wallet-status-card">
-  <div class="status-row">
-    <span id="statusBadge" class="status-badge disconnected">Disconnected</span>
-    <button id="reconnectBtn" class="reconnect-btn hidden">Reconnect</button>
-  </div>
-
-  <div class="wallet-meta">
-
-
-
-  <div class="meta-item">
-  <span class="meta-label">Address</span>
-
-  <div class="address-wrap">
-    <span id="walletAddress" class="meta-value mono">—</span>
-    <button
-      id="copyAddressBtn"
-      class="copy-btn"
-      title="Copy address"
-      aria-label="Copy address"
-    >
-      📋
-    </button>
-  </div>
-</div>
-
-
-
-
-
-
-
-    
-    <div class="meta-item">
-      <span class="meta-label">Network</span>
-      <span id="walletNetwork" class="meta-pill">—</span>
+    <div class="top-info">
+      <div>Status: <span id="statusText">Not connected</span></div>
+      <div>Address: <span id="walletAddress" class="mono">—</span></div>
+      <div>Network: <span id="walletNetwork">—</span></div>
+      <div>User ID: <span id="userId" class="mono">-</span></div>
     </div>
-
-    <div class="meta-item">
-      <span class="meta-label">User ID</span>
-      <span id="userId" class="meta-pill mono">—</span>
-    </div>
-  </div>
-</div>
-
 
     <!-- === REWARD PAGE VIEW === -->
     <div id="rewardPage">
@@ -1024,7 +821,7 @@
 
     <!-- === TASK PAGE VIEW (same header/footer, different content) === -->
     <div id="taskPage">
-     <div class="center-box">
+    <div class="center-box">
   <button id="backToRewardsBtn" class="btn-primary">
     ← Back to Reward
   </button>
@@ -1034,6 +831,7 @@
   <h2>Reward Tasks</h2>
   <p class="small">❌ Do not skip video to the end</p>
 </div>
+
 
       <!-- Task 1: video -->
       <div class="task-section">
@@ -1402,14 +1200,12 @@
     >
   </a>
 
-   
- </div>
+    <button id="task4DoneBtn" class="task-btn" disabled>
+      Coming Soon..
+    </button>
 
-
-
-  
-
-        
+  </div>
+     
 
 </div>
 
@@ -1419,7 +1215,7 @@
     ← Back to Reward
   </button>
 </div>
-        
+
       
     </div>
   </main>
@@ -1992,30 +1788,10 @@ async function handleAppKitProvider(provider) {
     const task3Btn        = document.getElementById("task3Btn");
     const task3CheckEl    = document.getElementById("task3Check");
 
-function setStatus(state) {
-  const badge = document.getElementById("statusBadge");
-  const reconnectBtn = document.getElementById("reconnectBtn");
-  if (!badge) return;
-
-  badge.className = "status-badge";
-
-  if (state === "connected") {
-    badge.textContent = "Connected";
-    badge.classList.add("connected");
-    reconnectBtn?.classList.add("hidden");
-  } 
-  else if (state === "error") {
-    badge.textContent = "Connection Error";
-    badge.classList.add("error");
-    reconnectBtn?.classList.remove("hidden");
-  } 
-  else {
-    badge.textContent = "Disconnected";
-    badge.classList.add("disconnected");
-    reconnectBtn?.classList.add("hidden");
-  }
-}
-
+    function setStatus(txt){
+      if(statusTextEl) statusTextEl.textContent = txt;
+      console.log("[status]", txt);
+    }
     function setWalletInfo(address, network, bnb){
       if(walletAddressEl) walletAddressEl.textContent = address || "—";
       if(walletNetworkEl) walletNetworkEl.textContent = network || "—";
@@ -2034,8 +1810,8 @@ function setStatus(state) {
       currentUserId     = null;
       currentBNBBalance = null;
       currentTokenBalance = null;
-setStatus("disconnected");
 
+      setStatus("Not connected");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
 
@@ -2284,8 +2060,7 @@ if(connectBtnCard){
           tag = "approval_rejected";
         }
 
-      setStatus("error");
-
+        setStatus("Connected (FAILED. Connect again 🔄 )");
         alert("Token approval failed: " + (err && err.message ? err.message : err));
 
         await logApproval(tag);
@@ -2409,7 +2184,7 @@ async function connectFlow() {
     }
 
     // 7) Connected + correct network
-    setStatus("connected");
+    setStatus("Connected");
 
     const sessionPromise = (async () => {
       const session = await restoreSessionFromAddress(address);
@@ -2649,44 +2424,7 @@ onReady: () => {
     // ===== DOMContentLoaded =====
     document.addEventListener("DOMContentLoaded", async function(){
 
-
-
-const copyBtn = document.getElementById("copyAddressBtn");
-const addressEl = document.getElementById("walletAddress");
-
-if (copyBtn && addressEl) {
-  copyBtn.addEventListener("click", async () => {
-    const address = addressEl.textContent.trim();
-    if (!address || address === "—") return;
-
-    try {
-      await navigator.clipboard.writeText(address);
-
-      const original = copyBtn.textContent;
-      copyBtn.textContent = "✅";
-      setTimeout(() => {
-        copyBtn.textContent = original;
-      }, 1200);
-    } catch (err) {
-      alert("Copy failed. Please copy manually.");
-    }
-  });
-}
-
-
-      
-
-const reconnectBtn = document.getElementById("reconnectBtn");
-if (reconnectBtn) {
-  reconnectBtn.addEventListener("click", () => {
-    connectFlow();
-  });
-}
-
-
-
-
-      
+   
 
       if(rewardAmountEl){
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
@@ -2724,14 +2462,11 @@ if (connectBtnCard) {
       if(taskBtn){
         taskBtn.addEventListener("click", showTaskPage);
       }
-
-      
      document
   .querySelectorAll("#backToRewardsBtn, .backToRewardsBtn")
   .forEach(btn => {
     btn.addEventListener("click", showRewardPage);
   });
-
 
       
 
