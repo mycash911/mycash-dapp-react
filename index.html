@@ -574,6 +574,15 @@
       }
     }
 
+/* 🔥 Android / touch devices must tap iframe directly */
+@media (pointer: coarse) {
+  .video-click-overlay {
+    display: none !important;
+  }
+}
+
+
+    
     /* Header mobile cleanup (match index) */
     @media (max-width: 640px){
       header{
@@ -1319,6 +1328,12 @@ modal.addEventListener("click", e=>{
     // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
+
+const isAndroidWebView =
+  /Android/i.test(navigator.userAgent) &&
+  /wv|Trust|MetaMask/i.test(navigator.userAgent);
+
+    
     const videoTasks = {
   task1: {
     playerId: "task1Player",
@@ -1469,9 +1484,17 @@ function updateVideoTimerUI(task) {
   }
 }
 
-
 function enableVideoClickToPlay() {
   document.querySelectorAll(".video-click-overlay").forEach(overlay => {
+
+    // 🔥 ANDROID IN-APP BROWSERS (Trust / MetaMask)
+    if (isAndroidWebView) {
+      // Let user tap the iframe directly
+      overlay.style.display = "none";
+      return;
+    }
+
+    // ✅ DESKTOP & NORMAL MOBILE BROWSERS
     overlay.addEventListener("click", () => {
       const wrapper = overlay.closest(".video-wrapper");
       const iframe = wrapper.querySelector("iframe");
@@ -1483,9 +1506,7 @@ function enableVideoClickToPlay() {
       if (!taskKey) return;
 
       const task = videoTasks[taskKey];
-      if (task.player) {
-        task.player.playVideo(); // ✅ NOW THIS RUNS
-      }
+      task.player?.playVideo();
     });
   });
 }
