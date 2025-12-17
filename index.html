@@ -727,7 +727,29 @@ body {
 }
 
 
-    
+    /* ===== BIG PRIMARY APPROVE BUTTON (MODAL ONLY) ===== */
+#approvalModal .approve-btn{
+  padding:12px 28px;        /* 👈 bigger click area */
+  font-size:1rem;           /* 👈 larger text */
+  font-weight:700;
+
+  min-width:200px;          /* 👈 strong primary feel */
+  justify-content:center;
+
+  box-shadow:
+    0 14px 36px rgba(37,99,235,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+#approvalModal .approve-btn:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    0 20px 46px rgba(37,99,235,0.75);
+}
+
+#approvalModal .approve-btn:active{
+  transform:translateY(0);
+}
+
 
     
     .task-actions{
