@@ -267,8 +267,42 @@
   }
 }
 
+@media (max-width: 420px) {
+  .status-row {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+
+    .meta-value.mono {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
     
+@media (max-width: 768px) {
+  .reward-right {
+    width: 100%;
+  }
+  .reward-right .connect {
+    width: 100%;
+    max-width: 260px;
+  }
+}
+
+
+    @media (max-width: 480px) {
+  .center-text h2 {
+    font-size: 1.25rem;
+  }
+  .center-text .small {
+    font-size: 0.8rem;
+  }
+}
 
     .btn-claim{
       background:#22c55e;
@@ -1318,23 +1352,19 @@
 
 
 
+  
+
+        
+
+</div>
+
+
 <div class="center-box" style="margin-top: 26px;">
   <button class="btn-primary backToRewardsBtn">
     ← Back to Reward
   </button>
 </div>
         
-  <div class="center-box">
-<button class="btn-primary backToRewardsBtn">
-    ← Back to Reward2
-  </button>
-  </div>
-
-        
-
-</div>
-
-
       
     </div>
   </main>
