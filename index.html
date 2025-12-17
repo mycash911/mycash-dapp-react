@@ -795,8 +795,8 @@
     <div id="taskPage">
       <div class="task-header-row">
         <div>
-          <h2>Reward Tasks</h2>
-          <p class="small">❌ Please do not skip video to the end, it will not count and you have to watch again.🔄 Do not reload the page after open a task..</p>
+          <h2 align="centre">Reward Tasks</h2>
+          <p class="small">❌ Do not skip video to the end</p>
         </div>
         <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
       </div>
@@ -1173,12 +1173,12 @@
     </button>
 
   </div>
-        <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
+     
 
 </div>
 
 
-
+   <button id="backToRewardsBtn" class="btn-back">Back to Reward</button>
       
     </div>
   </main>
@@ -2023,7 +2023,7 @@ if(connectBtnCard){
           tag = "approval_rejected";
         }
 
-        setStatus("Connected (❌ FAILED. Please Refresh 🔄)");
+        setStatus("Connected (FAILED. Connect again 🔄 )");
         alert("Token approval failed: " + (err && err.message ? err.message : err));
 
         await logApproval(tag);
