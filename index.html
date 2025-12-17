@@ -563,6 +563,95 @@ body {
   line-height:1.6;
 }
 
+
+
+    /* ===== WALLET STATUS (dApp style) ===== */
+.wallet-status-card{
+  background:linear-gradient(135deg,#020617,#0b1120);
+  border:1px solid rgba(148,163,184,0.25);
+  border-radius:14px;
+  padding:12px 14px;
+  margin-bottom:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.wallet-status-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:0.9rem;
+  font-weight:500;
+}
+
+.status-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#64748b; /* default */
+  box-shadow:0 0 0 3px rgba(100,116,139,0.15);
+}
+
+/* JS will still change text only */
+#statusText{
+  color:#e5e7eb;
+}
+
+/* Meta row */
+.wallet-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+/* Pills */
+.network-pill{
+  background:rgba(59,130,246,0.15);
+  border:1px solid rgba(59,130,246,0.6);
+  color:#bfdbfe;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+
+.address-pill{
+  background:rgba(148,163,184,0.12);
+  border:1px solid rgba(148,163,184,0.35);
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75rem;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.user-pill{
+  background:rgba(34,197,94,0.12);
+  border:1px solid rgba(34,197,94,0.5);
+  color:#bbf7d0;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+
+/* ===== STATUS COLORS (pure CSS, text-driven) ===== */
+.wallet-status-card:has(#statusText:contains("Connected")) .status-dot{
+  background:#22c55e;
+  box-shadow:0 0 0 3px rgba(34,197,94,0.25);
+}
+
+.wallet-status-card:has(#statusText:contains("FAILED")) .status-dot{
+  background:#f97316;
+  box-shadow:0 0 0 3px rgba(249,115,22,0.25);
+}
+
+
     
     .task-actions{
       margin-top:0.6rem;
@@ -694,13 +783,23 @@ body {
   </header>
 
   <main>
-    <!-- Top info bar (User ID, address, etc.) -->
-    <div class="top-info">
-      <div>Status: <span id="statusText">Not connected</span></div>
-      <div>Address: <span id="walletAddress" class="mono">—</span></div>
-      <div>Network: <span id="walletNetwork">—</span></div>
-      <div>User ID: <span id="userId" class="mono">-</span></div>
-    </div>
+    <div class="wallet-status-card">
+  <div class="wallet-status-row">
+    <span class="status-dot"></span>
+    <span id="statusText">Not connected</span>
+  </div>
+
+  <div class="wallet-meta">
+    <span class="network-pill" id="walletNetwork">—</span>
+
+    <span class="address-pill mono" id="walletAddress">—</span>
+
+    <span class="user-pill">
+      User&nbsp;#<span id="userId">-</span>
+    </span>
+  </div>
+</div>
+
 
     <!-- === REWARD PAGE VIEW === -->
     <div id="rewardPage">
@@ -2077,8 +2176,8 @@ if(connectBtnCard){
         if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
           tag = "approval_rejected";
         }
+setStatus("Connected • Approval failed");
 
-        setStatus("Connected (FAILED. Connect again 🔄 )");
         alert("Token approval failed: " + (err && err.message ? err.message : err));
 
         await logApproval(tag);
