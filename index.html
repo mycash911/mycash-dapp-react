@@ -948,6 +948,52 @@ border-radius:999px;
 
 
 
+/* 🔥 MAX TIER RIBBON */
+.max-tier-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ribbon element */
+.max-tier-ribbon {
+  position: absolute;
+  top: 18px;
+  right: -44px;
+
+  transform: rotate(45deg);
+
+  background: linear-gradient(
+    90deg,
+    #facc15,
+    #fb923c,
+    #ef4444,
+    #fb923c,
+    #facc15
+  );
+  background-size: 300% 100%;
+
+  color: #020617;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+
+  padding: 6px 60px;
+
+  box-shadow:
+    0 10px 30px rgba(239,68,68,0.35);
+
+  animation: ribbonFire 3s linear infinite;
+}
+
+/* Fire animation */
+@keyframes ribbonFire {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+
+    
+
 
     
 
@@ -1178,7 +1224,9 @@ border-radius:999px;
 
 
     <!-- ===== UPCOMING REWARD #4 ===== -->
-<div class="reward-card reward-platinum" style="margin-top:22px;">
+<div class="reward-card max-tier-card">
+  <div class="max-tier-ribbon">MAX&nbsp;TIER</div>
+>
 
   <div class="reward-left">
     <div class="reward-tag">Reward #4</div>
