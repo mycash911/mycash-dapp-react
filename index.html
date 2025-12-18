@@ -861,29 +861,29 @@ border-radius:999px;
 
 /* ───────── SILVER ───────── */
 .reward-silver{
-  border-left:3px solid #9ca3af;   /* neutral silver */
+  border-left:3px solid #FFF4C7;   /* neutral silver */
 }
 
 .reward-silver .reward-amount{
-  color:#FFF1B8;
+  color:#FFF4C7;
 }
 
 /* ───────── GOLD ───────── */
 .reward-gold{
-  border-left:3px solid #ca8a04;   /* muted gold */
+  border-left:3px solid #FFD057;   /* muted gold */
 }
 
 .reward-gold .reward-amount{
-  color:#fde68a;
+  color:#FFD057;
 }
 
 /* ───────── PLATINUM ───────── */
 .reward-platinum{
-  border-left:3px solid #94a3b8;   /* cold platinum */
+  border-left:3px solid #FFCD00;   /* cold platinum */
 }
 
 .reward-platinum .reward-amount{
-  color:#FFA900;
+  color:#FFCD00;
 }
 .reward-gold{
   box-shadow:inset 3px 0 0 rgba(202,138,4,0.35);
@@ -2237,6 +2237,7 @@ async function handleAppKitProvider(provider) {
       }
 
 if(connectBtnCard){
+    connectBtnCard.style.display = ""; 
   connectBtnCard.textContent = "Connect Wallet";
   connectBtnCard.classList.remove("connected");
 }
@@ -2548,9 +2549,9 @@ if (connectBtn) {
 }
 
 if (connectBtnCard) {
-  connectBtnCard.textContent = "Connected";
-  connectBtnCard.classList.add("connected");
+  connectBtnCard.style.display = "none";
 }
+
       updateClaimState();
       updateApproveButtonUI();
 
