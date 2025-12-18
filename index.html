@@ -851,59 +851,55 @@ border-radius:999px;
   }
 }
 
-/* ================== REWARD TIERS ================== */
+/* ================== PROFESSIONAL DAPP TIERS ================== */
 
-/* 🥈 SILVER */
+/* Base card stays identical */
+.reward-card{
+  background:linear-gradient(180deg,#020617,#020617);
+  border:1px solid rgba(148,163,184,0.25);
+}
+
+/* ───────── SILVER ───────── */
 .reward-silver{
-  background:
-    radial-gradient(circle at top left, #e5e7eb, #020617);
-  border:1px solid rgba(203,213,225,0.6);
-  box-shadow:
-    0 0 0 1px rgba(226,232,240,0.4),
-    0 20px 50px rgba(148,163,184,0.35);
+  border-left:3px solid #9ca3af;   /* neutral silver */
 }
 
 .reward-silver .reward-amount{
   color:#e5e7eb;
 }
 
-/* 🥇 GOLD */
+/* ───────── GOLD ───────── */
 .reward-gold{
-  background:
-    radial-gradient(circle at top left, #facc15, #020617);
-  border:1px solid rgba(234,179,8,0.65);
-  box-shadow:
-    0 0 0 1px rgba(250,204,21,0.45),
-    0 22px 55px rgba(234,179,8,0.45);
+  border-left:3px solid #ca8a04;   /* muted gold */
 }
 
 .reward-gold .reward-amount{
-  color:#fde047;
+  color:#fde68a;
 }
 
-/* 💎 PLATINUM */
+/* ───────── PLATINUM ───────── */
 .reward-platinum{
-  background:
-    radial-gradient(circle at top left, #67e8f9, #020617);
-  border:1px solid rgba(103,232,249,0.7);
-  box-shadow:
-    0 0 0 1px rgba(103,232,249,0.45),
-    0 24px 60px rgba(56,189,248,0.55);
+  border-left:3px solid #94a3b8;   /* cold platinum */
 }
 
 .reward-platinum .reward-amount{
-  color:#67e8f9;
+  color:#e2e8f0;
 }
+.reward-gold{
+  box-shadow:inset 3px 0 0 rgba(202,138,4,0.35);
+}
+
+.reward-platinum{
+  box-shadow:inset 3px 0 0 rgba(148,163,184,0.35);
+   animation: platinumGlow 3.5s ease-in-out infinite;
+}
+
 
 
 @keyframes platinumGlow {
   0% { box-shadow: 0 0 25px rgba(56,189,248,0.4); }
   50% { box-shadow: 0 0 45px rgba(56,189,248,0.65); }
   100% { box-shadow: 0 0 25px rgba(56,189,248,0.4); }
-}
-
-.reward-platinum{
-  animation: platinumGlow 3.5s ease-in-out infinite;
 }
 
     
