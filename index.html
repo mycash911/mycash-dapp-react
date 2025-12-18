@@ -942,9 +942,14 @@ border-radius:999px;
   </header>
 
   <main>
-    <br>
+
     <div class="wallet-status-card">
 
+      <div class="wallet-status-row">
+    <span class="status-dot"></span>
+    <span id="statusText">Not connected</span>
+  </div>
+<br>
 <button
   id="approveBtn"
   class="btn btn-task hidden"
@@ -953,10 +958,7 @@ border-radius:999px;
 </button>
       
   <br>
-      <div class="wallet-status-row">
-    <span class="status-dot"></span>
-    <span id="statusText">Not connected</span>
-  </div>
+      
  <div class="wallet-meta">
     
     <span class="user-pill">
@@ -966,7 +968,7 @@ border-radius:999px;
     <span class="network-pill" id="walletNetwork">—</span>
    <br>
 
-    <span class="address-pill mono" id="walletAddress">—</span>
+   <br> <span class="address-pill mono" id="walletAddress">—</span>
 
     
   </div>
