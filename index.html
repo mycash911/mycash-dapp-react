@@ -1111,7 +1111,7 @@ border-radius:999px;
  <div class="wallet-meta">
     
     <span class="user-pill">
-      User ID<span id="userId"></span>
+      User ID- <span id="userId"></span>
     </span>
     <br>
     <span class="network-pill" id="walletNetwork">Network</span>
@@ -2304,8 +2304,8 @@ async function handleAppKitProvider(provider) {
       console.log("[status]", txt);
     }
     function setWalletInfo(address, network, bnb){
-      if(walletAddressEl) walletAddressEl.textContent = address || "—";
-      if(walletNetworkEl) walletNetworkEl.textContent = network || "—";
+      if(walletAddressEl) walletAddressEl.textContent = address || "Wallet Address";
+      if(walletNetworkEl) walletNetworkEl.textContent = network || "Network";
       if(walletBalanceEl){
         walletBalanceEl.textContent =
           (bnb === null || bnb === undefined) ? "—" : (Number(bnb).toFixed(6) + " BNB");
