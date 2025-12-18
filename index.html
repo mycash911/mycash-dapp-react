@@ -951,8 +951,8 @@ border-radius:999px;
 /* 🔥 MAX TIER RIBBON */
 .max-tier-card {
   position: relative;
-   overflow: visible;      /* ✅ allow ribbon to escape */
-  z-index: 5;   
+  overflow: hidden;     /* ✅ allow ribbon to escape */
+
   border-left:3px solid #00A3FF;
     box-shadow:inset 3px 0 0 rgba(148,163,184,0.35);
    animation: platinumGlow 3.5s ease-in-out infinite;
@@ -961,7 +961,7 @@ border-radius:999px;
 
 /* Ribbon element */
 .max-tier-ribbon {
-   z-index: 10;            /* always above cards */
+        /* always above cards */
   pointer-events: none; 
   position: absolute;
   top: 18px;
@@ -1231,7 +1231,7 @@ border-radius:999px;
 
 
     <!-- ===== UPCOMING REWARD #4 ===== -->
-<div class="reward-card max-tier-card">
+<div class="reward-card max-tier-card" style="margin-top:22px;">
   <div class="max-tier-ribbon">MAX&nbsp;TIER</div>
 <div class="reward-left">
     <div class="reward-tag">Reward #4</div>
