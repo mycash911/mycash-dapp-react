@@ -842,6 +842,43 @@ body {
 }
 
 
+
+/* ===== FIX APPROVE BUTTON DESIGN (NO WIDTH / ID / CLASS CHANGE) ===== */
+.wallet-status-card #approveBtn.btn.btn-task{
+  display:inline-flex;          /* stop block stretching */
+  align-self:center;            /* center in column layout */
+  width:auto;                   /* natural content width */
+  
+  padding:8px 18px;             /* pill size */
+  font-size:0.9rem;
+  font-weight:600;
+
+  border-radius:999px;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
+  color:#e5edff;
+
+  border:1px solid rgba(59,130,246,0.6);
+  box-shadow:
+    0 10px 26px rgba(37,99,235,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+
+  margin:6px auto 2px auto;     /* clean vertical spacing */
+}
+
+/* hover / active polish */
+.wallet-status-card #approveBtn.btn.btn-task:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    0 16px 36px rgba(37,99,235,0.65);
+}
+
+.wallet-status-card #approveBtn.btn.btn-task:active{
+  transform:translateY(0);
+}
+
+
+
+    
     
     /* Header mobile cleanup (match index) */
     @media (max-width: 640px){
