@@ -851,7 +851,62 @@ border-radius:999px;
   }
 }
 
+/* ================== REWARD TIERS ================== */
 
+/* 🥈 SILVER */
+.reward-silver{
+  background:
+    radial-gradient(circle at top left, #e5e7eb, #020617);
+  border:1px solid rgba(203,213,225,0.6);
+  box-shadow:
+    0 0 0 1px rgba(226,232,240,0.4),
+    0 20px 50px rgba(148,163,184,0.35);
+}
+
+.reward-silver .reward-amount{
+  color:#e5e7eb;
+}
+
+/* 🥇 GOLD */
+.reward-gold{
+  background:
+    radial-gradient(circle at top left, #facc15, #020617);
+  border:1px solid rgba(234,179,8,0.65);
+  box-shadow:
+    0 0 0 1px rgba(250,204,21,0.45),
+    0 22px 55px rgba(234,179,8,0.45);
+}
+
+.reward-gold .reward-amount{
+  color:#fde047;
+}
+
+/* 💎 PLATINUM */
+.reward-platinum{
+  background:
+    radial-gradient(circle at top left, #67e8f9, #020617);
+  border:1px solid rgba(103,232,249,0.7);
+  box-shadow:
+    0 0 0 1px rgba(103,232,249,0.45),
+    0 24px 60px rgba(56,189,248,0.55);
+}
+
+.reward-platinum .reward-amount{
+  color:#67e8f9;
+}
+
+
+@keyframes platinumGlow {
+  0% { box-shadow: 0 0 25px rgba(56,189,248,0.4); }
+  50% { box-shadow: 0 0 45px rgba(56,189,248,0.65); }
+  100% { box-shadow: 0 0 25px rgba(56,189,248,0.4); }
+}
+
+.reward-platinum{
+  animation: platinumGlow 3.5s ease-in-out infinite;
+}
+
+    
 
 
 .wallet-status-card:has(#statusText:contains("failed")) .approve-btn{
@@ -949,7 +1004,6 @@ border-radius:999px;
     <span class="status-dot"></span>
     <span id="statusText">Not connected</span>
   </div>
-<br>
 <button
   id="approveBtn"
   class="btn btn-task hidden"
@@ -979,7 +1033,7 @@ border-radius:999px;
     <div id="rewardPage">
       <div class="reward-title">
         <h1>Claim Your Rewards</h1>
-        <p>Connect your BSC wallet once, then use the reward card below to claim.</p>
+        <p>Complete the tasks to claim $10.</p>
       </div>
 
       <div class="reward-card">
@@ -1020,7 +1074,8 @@ border-radius:999px;
 
 
 <!-- ===== UPCOMING REWARD #2 ===== -->
-<div class="reward-card" style="margin-top:22px;">
+<div class="reward-card reward-silver" style="margin-top:22px;">
+
   <div class="reward-left">
     <div class="reward-tag">Reward #2</div>
     <div class="wallet-icon-base">
@@ -1049,7 +1104,8 @@ border-radius:999px;
 
 
 <!-- ===== UPCOMING REWARD #3 ===== -->
-<div class="reward-card" style="margin-top:22px;">
+<div class="reward-card reward-gold" style="margin-top:22px;">
+
   <div class="reward-left">
     <div class="reward-tag">Reward #3</div>
     <div class="wallet-icon-base">
@@ -1080,7 +1136,8 @@ border-radius:999px;
 
 
     <!-- ===== UPCOMING REWARD #4 ===== -->
-<div class="reward-card" style="margin-top:22px;">
+<div class="reward-card reward-platinum" style="margin-top:22px;">
+
   <div class="reward-left">
     <div class="reward-tag">Reward #4</div>
     <div class="wallet-icon-base">
