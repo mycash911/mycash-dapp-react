@@ -905,6 +905,52 @@ border-radius:999px;
     
 
 
+/* 🔥 FIRE / PLATINUM AMOUNT ANIMATION */
+.fire-amount {
+  background: linear-gradient(
+    90deg,
+    #facc15,
+    #fb923c,
+    #ef4444,
+    #fb923c,
+    #facc15
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-shadow:
+    0 0 12px rgba(251, 146, 60, 0.35),
+    0 0 24px rgba(239, 68, 68, 0.25);
+
+  animation:
+    fireFlow 3.5s linear infinite,
+    firePulse 2.4s ease-in-out infinite;
+}
+
+/* flowing fire gradient */
+@keyframes fireFlow {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* subtle heat pulse */
+@keyframes firePulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.04);
+    filter: brightness(1.25);
+  }
+}
+
+
+
+
+    
+
 .wallet-status-card:has(#statusText:contains("failed")) .approve-btn{
   animation:approvePulse 1.6s ease-out infinite;
 }
@@ -1143,7 +1189,8 @@ border-radius:999px;
   </div>
 
   <div class="reward-center">
-    <div class="reward-amount">$100</div>
+    <div class="reward-amount fire-amount">$100</div>
+
     <div class="reward-label">Level 4 Bonus</div>
 
     <div class="reward-desc">
