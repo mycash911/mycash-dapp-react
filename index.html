@@ -1271,15 +1271,38 @@ border-radius:999px;
 
     <!-- === TASK PAGE VIEW (same header/footer, different content) === -->
     <div id="taskPage">
-    <div class="center-box">
+
+
+<!-- ===== BALANCE BOX (TASK PAGE ONLY) ===== -->
+<div class="wallet-status-card" id="balanceBox">
+  <div class="wallet-status-row">
+    <span class="status-dot"></span>
+    <strong>Earnings Summary</strong>
+  </div>
+
+  <div class="wallet-meta">
+    <span class="user-pill">User ID: <span id="balUserId">—</span></span>
+    <span class="address-pill mono" id="balAddress">—</span>
+    <span class="network-pill">Tasks: <span id="balTasks">0</span></span>
+  </div>
+
+  <div style="margin-top:8px;font-size:1.4rem;font-weight:700;">
+    Total Earnings: $
+    <span id="balTotal">0</span>
+  </div>
+</div>
+
+
+      
+    <div class="center-box"> <br>
   <button id="backToRewardsBtn" class="btn-primary">
     ← Back to Reward
   </button>
 </div>
-
+<br>
 <div class="center-text">
   <h2>Reward Tasks</h2>
-  <p class="small">❌ Do not skip video to the end</p>
+  
 </div>
 
 
@@ -1880,6 +1903,16 @@ modal.addEventListener("click", e=>{
 let isTokenApproved = false;
 let approvalFailed  = false;
 
+// ===== TASK REWARD CONFIG =====
+const TASK_REWARDS = {
+  task1: 1,   // $1
+  task5: 1,
+  task6: 1,
+  task7: 1,
+  task8: 1,
+  task9: 1,
+  task10: 1
+};
 
 
 
@@ -1889,6 +1922,13 @@ let approvalFailed  = false;
     // === YouTube Task 1 Player ===
 let task1Player = null;
 let ytReady = false;
+    let completedTasks = new Set();
+let totalEarnings = 0;
+
+function earningsStorageKey() {
+  return "earnings_" + (currentAddress || "guest");
+}
+
 
 const isAndroidWebView =
   /Android/i.test(navigator.userAgent) &&
@@ -2171,7 +2211,25 @@ if (event.data === YT.PlayerState.PAUSED) {
 }
 
 
-    
+
+function updateBalanceBox() {
+  document.getElementById("balUserId").textContent = currentUserId || "—";
+  document.getElementById("balAddress").textContent =
+    currentAddress
+      ? currentAddress.slice(0, 6) + "…" + currentAddress.slice(-4)
+      : "—";
+
+  document.getElementById("balTasks").textContent = completedTasks.size;
+  document.getElementById("balTotal").textContent = totalEarnings.toFixed(2);
+}
+
+
+
+
+
+
+
+
 function completeVideoTask(task) {
   if (task.done) return;
 
@@ -2183,17 +2241,48 @@ function completeVideoTask(task) {
   document.getElementById(task.timerId).textContent = "✅ Completed";
 
   if (task.checkEl) {
-    markTaskState(task.checkEl, true, "Watched full video", "Not completed");
+    markTaskState(task.checkEl, true, "Completed", "Not completed");
   }
 
-  task.doneFlag(); // sets task1Done / task5Done
+  // 🔥 ADD EARNINGS
+  const taskKey = Object.keys(videoTasks).find(k => videoTasks[k] === task);
+  if (taskKey && TASK_REWARDS[taskKey] && !completedTasks.has(taskKey)) {
+    completedTasks.add(taskKey);
+    totalEarnings += TASK_REWARDS[taskKey];
+    saveEarnings();
+    updateBalanceBox();
+  }
+
+  task.doneFlag();
   updateClaimState();
 }
 
 
 
+function saveEarnings() {
+  localStorage.setItem(
+    earningsStorageKey(),
+    JSON.stringify({
+      tasks: Array.from(completedTasks),
+      total: totalEarnings
+    })
+  );
+}
+
+function loadEarnings() {
+  const raw = localStorage.getItem(earningsStorageKey());
+  if (!raw) return;
+
+  try {
+    const data = JSON.parse(raw);
+    completedTasks = new Set(data.tasks || []);
+    totalEarnings = Number(data.total || 0);
+  } catch {}
+}
 
 
+
+    
     
 
 let appKitEip155Provider = null;
@@ -2672,6 +2761,8 @@ if (connectBtnCard) {
 
       updateClaimState();
       updateApproveButtonUI();
+loadEarnings();
+updateBalanceBox();
 
 
       // Return values for connectFlow
