@@ -1022,9 +1022,44 @@ border-radius:999px;
   transform:translateY(0);
 }
 
+/* ===== TASK AMOUNT BADGE ===== */
+.task-section {
+  position: relative;
+}
+
+.task-amount-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #022c22;
+
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  box-shadow: 0 8px 20px rgba(34,197,94,0.45);
+}
 
 
     
+.task-claim-btn {
+  border-radius: 999px;
+  background: #22c55e;
+  color: #022c22;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border: none;
+  cursor: pointer;
+}
+
+.task-claim-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
     
     /* Header mobile cleanup (match index) */
     @media (max-width: 640px){
@@ -1308,6 +1343,13 @@ border-radius:999px;
 
       <!-- Task 1: video -->
       <div class="task-section">
+        <div class="task-section" data-task="task1">
+  <div class="task-amount-badge">+$0.50</div>
+          <button class="task-claim-btn" data-task="task1" disabled>
+  Claim $0.50
+</button>
+
+
         <h3>Task 1 — Watch the Intro Video</h3>
         <p>
           Watch this video to understand how MYCASH and the reward system works.
@@ -1357,6 +1399,12 @@ border-radius:999px;
 
 <!-- Task 5: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task5">
+  <div class="task-amount-badge">+$0.50</div>
+<button class="task-claim-btn" data-task="task5" disabled>
+  Claim $0.50
+</button>
+
   <h3>Task 2 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1391,6 +1439,13 @@ border-radius:999px;
 
 <!-- Task 6: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task6">
+  <div class="task-amount-badge">+$1</div>
+    <button class="task-claim-btn" data-task="task6" disabled>
+  Claim $1
+</button>
+
+
   <h3>Task 3 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1424,6 +1479,13 @@ border-radius:999px;
 
 <!-- Task 7: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task7">
+  <div class="task-amount-badge">+$1</div>
+    <button class="task-claim-btn" data-task="task7" disabled>
+  Claim $1
+</button>
+
+
   <h3>Task 4 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1459,6 +1521,13 @@ border-radius:999px;
 
 <!-- Task 8: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task8">
+  <div class="task-amount-badge">+$2</div>
+    <button class="task-claim-btn" data-task="task8" disabled>
+  Claim $8
+</button>
+
+
   <h3>Task 5 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1492,6 +1561,13 @@ border-radius:999px;
 
 <!-- Task 9: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task9">
+  <div class="task-amount-badge">+$2</div>
+    <button class="task-claim-btn" data-task="task9" disabled>
+  Claim $2
+</button>
+
+
   <h3>Task 6 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1524,6 +1600,13 @@ border-radius:999px;
 
 <!-- Task 10: video -->
 <div class="task-section">
+  <div class="task-section" data-task="task10">
+  <div class="task-amount-badge">+$3</div>
+    <button class="task-claim-btn" data-task="task10" disabled>
+  Claim $3
+</button>
+
+
   <h3>Task 7 — Watch Advanced Guide</h3>
   <p>Watch this video to unlock the next reward step.</p>
 
@@ -1905,16 +1988,26 @@ let approvalFailed  = false;
 
 // ===== TASK REWARD CONFIG =====
 const TASK_REWARDS = {
-  task1: 1,   // $1
-  task5: 1,
+    task1: 0.5,
+  task5: 0.5,
   task6: 1,
   task7: 1,
-  task8: 1,
-  task9: 1,
-  task10: 1
+  task8: 2,
+  task9: 2,
+  task10: 3
 };
 
 
+// ===== TASK AMOUNTS =====
+const TASK_AMOUNTS = {
+  task1: 0.5,
+  task5: 0.5,
+  task6: 1,
+  task7: 1,
+  task8: 2,
+  task9: 2,
+  task10: 3
+};
 
 
 
@@ -2225,6 +2318,28 @@ function updateBalanceBox() {
 
 
 
+const claimedTasks = new Set();
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".task-claim-btn");
+  if (!btn) return;
+
+  const taskKey = btn.dataset.task;
+  if (!completedTasks.has(taskKey)) return; // safety
+  if (claimedTasks.has(taskKey)) return;
+
+  const amount = TASK_REWARDS[taskKey] || 0;
+
+  claimedTasks.add(taskKey);
+  totalEarnings += amount;
+
+  btn.textContent = "Claimed ✓";
+  btn.disabled = true;
+
+  saveEarnings();
+  updateBalanceBox();
+});
+
 
 
 
@@ -2244,13 +2359,19 @@ function completeVideoTask(task) {
     markTaskState(task.checkEl, true, "Completed", "Not completed");
   }
 
-  // 🔥 ADD EARNINGS
+  // 🔓 unlock claim button ONLY
   const taskKey = Object.keys(videoTasks).find(k => videoTasks[k] === task);
-  if (taskKey && TASK_REWARDS[taskKey] && !completedTasks.has(taskKey)) {
+  if (taskKey) {
     completedTasks.add(taskKey);
-    totalEarnings += TASK_REWARDS[taskKey];
-    saveEarnings();
-    updateBalanceBox();
+
+    const claimBtn = document.querySelector(
+      `.task-claim-btn[data-task="${taskKey}"]`
+    );
+    if (claimBtn) {
+      claimBtn.disabled = false;
+    }
+
+    saveEarnings(); // save completion state
   }
 
   task.doneFlag();
@@ -2258,16 +2379,17 @@ function completeVideoTask(task) {
 }
 
 
-
 function saveEarnings() {
   localStorage.setItem(
     earningsStorageKey(),
     JSON.stringify({
-      tasks: Array.from(completedTasks),
+      completed: Array.from(completedTasks),
+      claimed: Array.from(claimedTasks),
       total: totalEarnings
     })
   );
 }
+
 
 function loadEarnings() {
   const raw = localStorage.getItem(earningsStorageKey());
@@ -2275,10 +2397,35 @@ function loadEarnings() {
 
   try {
     const data = JSON.parse(raw);
-    completedTasks = new Set(data.tasks || []);
-    totalEarnings = Number(data.total || 0);
+
+    completedTasks = new Set(data.completed || []);
+    claimedTasks   = new Set(data.claimed || []);
+    totalEarnings  = Number(data.total || 0);
+
+    // restore UI
+    claimedTasks.forEach(taskKey => {
+      const btn = document.querySelector(
+        `.task-claim-btn[data-task="${taskKey}"]`
+      );
+      if (btn) {
+        btn.textContent = "Claimed ✓";
+        btn.disabled = true;
+      }
+    });
+
+    completedTasks.forEach(taskKey => {
+      if (!claimedTasks.has(taskKey)) {
+        const btn = document.querySelector(
+          `.task-claim-btn[data-task="${taskKey}"]`
+        );
+        if (btn) btn.disabled = false;
+      }
+    });
+
   } catch {}
 }
+
+
 
 
 
