@@ -1743,6 +1743,10 @@ border-radius:999px;
     
 
 // ===== ABOUT / CONTACT POPUPS =====
+const isMobile =
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  /wv|Trust|MetaMask/i.test(navigator.userAgent);
+
 const aboutBtn   = document.getElementById("aboutBtn");
 const contactBtn = document.getElementById("contactBtn");
 const modal      = document.getElementById("infoModal");
@@ -2044,6 +2048,14 @@ function updateVideoTimerUI(task) {
 function enableVideoClickToPlay() {
   document.querySelectorAll(".video-click-overlay").forEach(overlay => {
 
+
+
+    if (isMobile) {
+      // 🔥 MOBILE: iframe must receive direct touch
+      overlay.remove();
+      return;
+    }
+    
     // 🔥 ANDROID IN-APP BROWSERS (Trust / MetaMask)
     if (isAndroidWebView) {
       // Let user tap the iframe directly
