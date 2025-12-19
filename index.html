@@ -2398,11 +2398,15 @@ function loadEarnings() {
   try {
     const data = JSON.parse(raw);
 
-    completedTasks = new Set(data.completed || []);
-    claimedTasks   = new Set(data.claimed || []);
-    totalEarnings  = Number(data.total || 0);
+    completedTasks.clear();
+    (data.completed || []).forEach(t => completedTasks.add(t));
 
-    // restore UI
+    claimedTasks.clear();
+    (data.claimed || []).forEach(t => claimedTasks.add(t));
+
+    totalEarnings = Number(data.total || 0);
+
+    // restore buttons
     claimedTasks.forEach(taskKey => {
       const btn = document.querySelector(
         `.task-claim-btn[data-task="${taskKey}"]`
@@ -2422,9 +2426,10 @@ function loadEarnings() {
       }
     });
 
-  } catch {}
+  } catch (e) {
+    console.warn("Failed to load earnings", e);
+  }
 }
-
 
 
 
